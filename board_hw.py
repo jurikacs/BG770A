@@ -7,6 +7,7 @@ import time
 bRPi = False
 if "win" not in sys.platform: 
 	import smbus
+	import RPi.GPIO as GPIO
 	bRPi = True
 
 # Peripheral Pin Definations
@@ -25,6 +26,9 @@ class board_hw:
 		# Get I2C bus
 		self.bus = smbus.SMBus(1)
 		time.sleep(0.5)
+		
+		GPIO.setmode(GPIO.BCM)
+		GPIO.setwarnings(False)
 
 	def readAcc(self):
 		return

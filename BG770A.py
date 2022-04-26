@@ -287,7 +287,7 @@ if __name__=='__main__':
 	for p in ports:
 		print(p)
 
-	module = BG770A()
+	module = BG770A(serial_port="/dev/ttyS0", serial_baudrate=9600, board="Sixfab NB-IoT Shield")
 
 	module.sendATcmd("ATE1","OK\r\n")
 	module.gnssOn();

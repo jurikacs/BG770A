@@ -5,7 +5,7 @@
 import board_hw
 import time
 
-shield = board_hw()
+shield = board_hw.board_hw()
 
 print("user LED ON") 
 shield.turnOnUserLED()

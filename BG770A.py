@@ -3,6 +3,7 @@
 	Library for Finamon GNSS/Modem BG770A Shield.
 '''
 
+import csv
 import serial
 import sys
 import time
@@ -19,7 +20,7 @@ if "win" not in sys.platform:
 RESET = 16
 
 # global variables
-TIMEOUT = 3 # seconds
+TIMEOUT = 1.0 # seconds
 ser = serial.Serial()
 
 ###########################################
@@ -29,10 +30,11 @@ ser = serial.Serial()
 # function for printing debug message 
 def debug_print(message):
 	print(message)
+	#print(time.time(), message)
 
 # function for getting time as miliseconds
 def millis():
-	return int(time.time())
+	return int(time.time()*1000)
 
 # function for delay as miliseconds
 def delay(ms):
@@ -51,9 +53,11 @@ class BG770A:
 	compose = ""
 	response = ""
 
-	
+	latitude = 0
+	longitude = 0
+		
 	# Default Initializer
-	def __init__(self, serial_port="COM5", serial_baudrate=115200, board="Finamon GNSS/Modem BG770A Shield"):
+	def __init__(self, serial_port="COM4", serial_baudrate=115200, board="Finamon GNSS/Modem BG770A Shield"):
 		
 		self.board = board
 	
@@ -63,8 +67,6 @@ class BG770A:
 		ser.stopbits=serial.STOPBITS_ONE
 		ser.bytesize=serial.EIGHTBITS
 
-		self.latitude = 0
-		self.longitude = 0
 
 		debug_print(self.board + " created")
 
@@ -95,45 +97,38 @@ class BG770A:
 				debug_print(self.response)
 				break
 
-	# Function for sending at comamand to module
-	def sendATcmdOnce(self, command):
+	# Function for sending at command to BG770A.
+	def sendATcmd(self, command, desired_response = "OK\r\n", timeout_s = None):
+		
+		if timeout_s is None:
+			timeout_s = self.timeout
+			
 		if (ser.isOpen() == False):
-			ser.open()		
+			ser.open()
+
 		self.compose = ""
 		self.compose = str(command) + "\r"
-		ser.reset_input_buffer()
+		# debug_print(self.compose)
 		ser.write(self.compose.encode())
-		debug_print(self.compose)
-
-	# Function for sending at command to BG770A.
-	def sendATcmd(self, command, desired_response, timeout = None):
 		
-		if timeout is None:
-			timeout = self.timeout
-			
-		self.sendATcmdOnce(command)
-		
-		f_debug = False
-		
-		timer = millis()
-		while 1:
-			if( millis() - timer > timeout): 
-				self.sendATcmdOnce(command)
-				timer = millis()
-				f_debug = False
-			
-			self.response =""
-			while(ser.inWaiting()):
-				try: 
-					self.response += ser.read(ser.inWaiting()).decode('utf-8', errors='ignore')
-					delay(100)
-				except Exception as e:
-					debug_print(e.Message)
-				# debug_print(self.response)
+		self.response =""
+		ser.reset_input_buffer()
+		start_time = time.time()
+		while(time.time() - start_time < timeout_s):
+			try:
+				if(ser.in_waiting > 0):
+					self.response += ser.read(ser.in_waiting).decode('utf-8', errors='ignore')
+				delay(100)
+			except Exception as e:
+				debug_print(e.Message)
+			# debug_print(self.response)
 					
 			if(self.response.find(desired_response) != -1):
 				debug_print(self.response)
-				break
+				return True
+
+		debug_print("TIMEOUT after " + str(timeout_s) + " sec in AT command: " + self.compose + "\r\n")
+		return False
 
 	# Function for saving conf. and reset BG770A module
 	def resetModule(self):
@@ -267,16 +262,29 @@ class BG770A:
 	#******************************************************************************************
 
 	def gnssOn(self):
-	    pass
+		self.sendATcmd("AT+QGPS?")
+		self.sendATcmd("AT+QGPS=1")
+		self.sendATcmd("AT+QGPS?")
 
 	def gnssOff(self):
-	    pass
+		self.sendATcmd("AT+QGPSEND")
+		self.sendATcmd("AT+QGPS?")
 
 	def updateGnssLocation(self):
+		if(self.sendATcmd("AT+QGPSLOC?", "OK\r\n", 2.)):
+			#self.response = "+QGPSLOC: 072121.0,51.23878,6.72306,1.2,54.3,2,0.00,0.0,0.0,080620,12\r\n"
+			#self.response = "+QGPSLOC: 121445.0,51.23871,6.72304,1.0,53.8,3,0.00,0.0,0.0,050620,12\r\n"
+			fields = list(csv.reader([self.response[10:]]))[0]
+			self.latitude = fields[1]
+			self.longitude = fields[2]
+		else:
+			print (self.response)
+			self.latitude = .0
+			self.longitude = .0
 		return [self.latitude, self.longitude]
 
 	def getSatellitesInfo(self):
-	    pass
+		self.sendATcmd('AT+QGPSGNMEA="GSV"')
 
 
 
@@ -287,8 +295,8 @@ if __name__=='__main__':
 	for p in ports:
 		print(p)
 
-	module = BG770A(serial_port="/dev/ttyS0", serial_baudrate=9600, board="Sixfab NB-IoT Shield")
+	module = BG770A()	#(serial_port="/dev/ttyS0", serial_baudrate=9600, board="Sixfab NB-IoT Shield")
 
-	module.sendATcmd("ATE1","OK\r\n")
+	module.sendATcmd("AT","OK")
 	module.gnssOn();
 	module.updateGnssLocation();

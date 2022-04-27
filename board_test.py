@@ -14,4 +14,9 @@ time.sleep(2)
 print("user LED OFF") 
 shield.turnOffUserLED()
 
+while(True):
+	if shield.readUserButton():
+		shield.turnOnUserLED()
+	else:
+		shield.turnOffUserLED()
 

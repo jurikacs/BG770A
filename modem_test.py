@@ -8,7 +8,7 @@ import time
 remote_ip = "xx.xx.xx.xx"   # change with your remote ip
 remote_port = "xxxx"        # change with your remote port
 
-modem = BG770A.BG770A(serial_port="/dev/ttyS0", serial_baudrate=9600, board="Sixfab NB-IoT Shield")
+modem = BG770A.BG770A()
 
 modem.sendATcmd("ATE1","OK\r\n")
 

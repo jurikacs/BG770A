@@ -69,3 +69,9 @@ if __name__=='__main__':
 
 	print("user LED OFF") 
 	shield.turnOffUserLED()
+
+	while(True):
+		if shield.readUserButton():
+			shield.turnOnUserLED()
+		else:
+			shield.turnOffUserLED()

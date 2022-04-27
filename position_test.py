@@ -6,11 +6,18 @@ import BG770A
 import time
 
 
-navigator = BG770A.BG770A(serial_port="/dev/ttyS0", serial_baudrate=9600, board="Sixfab NB-IoT Shield")
+navigator = BG770A.BG770A()
 
 navigator.gnssOn()
 
 navigator.updateGnssLocation()
+print("position latitude: " + str(navigator.latitude) +  ", longitude: " + str(navigator.longitude))
+
 navigator.getSatellitesInfo()
+
+navigator.sendATcmd('AT+QGPSGNMEA="GGA"')
+navigator.sendATcmd('AT+QGPSGNMEA="RMC"')
+navigator.sendATcmd('AT+QGPSGNMEA="GSA"')
+navigator.sendATcmd('AT+QGPSGNMEA="VTG"')
 
 navigator.gnssOff()

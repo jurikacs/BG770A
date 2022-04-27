@@ -5,33 +5,31 @@
 import BG770A
 import time
 
-remote_ip = "xx.xx.xx.xx"   # change with your remote ip
-remote_port = "xxxx"        # change with your remote port
+remote_ip = "89.107.68.161" # change with your remote ip
+remote_port = 9098          # change with your remote port
 
 modem = BG770A.BG770A()
 
 modem.sendATcmd("ATE1","OK\r\n")
+modem.sendATcmd("AT+CMEE=2")
 
 modem.getIMEI()
-time.sleep(0.5)
 modem.getFirmwareInfo()
-time.sleep(0.5)
 modem.getHardwareInfo()
-time.sleep(0.5)
 
+modem.sendATcmd("AT+CPIN?")
+
+contextID = 1
 modem.setIPAddress(remote_ip)
-time.sleep(0.5)
 modem.setPort(remote_port)
-time.sleep(0.5)
 
-modem.connectToOperator()
-time.sleep(0.5)
+modem.initNetwork();
+modem.configTcpIpContext(contextID, "1and1")
+modem.activatePdpContext(contextID, 5)
+
+modem.openConnection(contextID, "UDP", 5)
+modem.sendUdpData("Hello Finamon")
 
 modem.closeConnection()
-time.sleep(0.5)
-modem.startUDPService()
-time.sleep(0.5)
-
-modem.sendDataUDP("Hello World!\r\n")
-time.sleep(0.5)
+modem.deactivatePdpContext(contextID, 5)
 

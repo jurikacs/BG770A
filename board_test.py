@@ -16,7 +16,7 @@ shield.turnOffUserLED()
 
 while(True):
 	if shield.readUserButton():
-		shield.turnOnUserLED()
-	else:
 		shield.turnOffUserLED()
+	else:
+		shield.turnOnUserLED()
 

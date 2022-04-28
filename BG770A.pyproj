@@ -4,7 +4,7 @@
     <SchemaVersion>2.0</SchemaVersion>
     <ProjectGuid>bc8707bb-8bf3-4490-b43a-2dc35d85de39</ProjectGuid>
     <ProjectHome>.</ProjectHome>
-    <StartupFile>modem_test.py</StartupFile>
+    <StartupFile>MC3479.py</StartupFile>
     <SearchPath>
     </SearchPath>
     <WorkingDirectory>.</WorkingDirectory>
@@ -26,6 +26,7 @@
     <Compile Include="board_test.py">
       <SubType>Code</SubType>
     </Compile>
+    <Compile Include="MC3479.py" />
     <Compile Include="position_test.py" />
     <Compile Include="modem_test.py">
       <SubType>Code</SubType>

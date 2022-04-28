@@ -281,17 +281,19 @@ if __name__=='__main__':
 	for p in ports:
 		print(p)
 
-	module = BG770A()	#(serial_port="/dev/ttyS0", serial_baudrate=9600, board="Sixfab NB-IoT Shield")
+	module = BG770A()	#(serial_port="/dev/ttyUSB0", serial_baudrate=9600, board="Sixfab NB-IoT Shield")
 
-	module.sendATcmd("AT","OK")
-	module.sendATcmd("AT+CPIN?")
+	module.sendATcmd("AT")
+	module.sendATcmd("AT+CMEE=2")
+	module.sendATcmd("AT+CPIN?", "OK\r\n", 5)
+	module.sendATcmd("AT+CPIN=\"7161\"", "OK\r\n", 5)
 
 	contextID = 1
 	module.setIPAddress("89.107.68.161")
 	module.setPort(9098)
 
 	module.initNetwork();
-	module.configTcpIpContext(contextID, "1and1")
+	module.configTcpIpContext(contextID, "web.vodafone.de")
 	module.activatePdpContext(contextID, 5)
 
 	module.openConnection(contextID, "UDP", 5)

@@ -72,6 +72,6 @@ if __name__=='__main__':
 
 	while(True):
 		if shield.readUserButton():
-			shield.turnOnUserLED()
-		else:
 			shield.turnOffUserLED()
+		else:
+			shield.turnOnUserLED()

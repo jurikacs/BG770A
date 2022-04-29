@@ -3,7 +3,7 @@
 	Library for Finamon GNSS/Modem BG770A Shield.
 '''
 
-#import smbus
+import smbus
 import time
 
 #----------------------------------------------------------------------------------------
@@ -52,7 +52,7 @@ class MC3419:
 
     def  __init__(self):
  
-        #i2cBus = smbus.SMBus(1)     # Get I2C bus
+        self.i2cBus = smbus.SMBus(1)     # Get I2C bus
         pass
 
     # Set the mode register.
@@ -241,14 +241,14 @@ class MC3419:
     #  bytesToSend: number of bytes to send (1 or 2)
     def  writeRegister(self, address,  data, bytesToSend = 1):
         if bytesToSend == 1:
-            #self.i2cBus.write_byte_data(self._i2cAddr, address, data)
+            self.i2cBus.write_byte_data(self._i2cAddr, address, data)
             print("write byte \t" + hex(data) + " \tto register " + str(address))
         elif bytesToSend == 2:
-            #self.i2cBus.write_word_data(self._i2cAddr, address, data)
+            self.i2cBus.write_word_data(self._i2cAddr, address, data)
             print("write word \t" + hex(data) + " \tto register " + str(address))
         else:
             print("TODO: implement multibyte write")
-            print("write " + str(bytesToSend) + " byte(s) \tto register "+ str(address))
+            print("write " + str(bytesToSend) + " bytes \tto register "+ str(address))
 
     # Read data from one or more registers
     #  address:         register address to read from
@@ -257,14 +257,12 @@ class MC3419:
     def readRegister(self, address, bytesToRead = 1):
         data = -1
         if bytesToRead == 1:
-            data = address
-            #TODO data = self.i2cBus.read_byte_data(self._i2cAddr, address)
+           data = self.i2cBus.read_byte_data(self._i2cAddr, address)
         elif bytesToRead == 2:
-            data = address << 8 | address
-            #TODO data = self.i2cBus.read_word_data(self._i2cAddr, address, data)
+            data = self.i2cBus.read_word_data(self._i2cAddr, address)
         else:
             print("TODO: implement multibyte read")
-        #print("read " + str(bytesToRead) + " byte(s) from register "+ str(address))
+        #print("read " + str(bytesToRead) + " bytes from registers "+ str(address))
         return data
 
 
@@ -272,7 +270,8 @@ class MC3419:
 if __name__=='__main__':
 
     accel = MC3419()
-
+    #print("who am I: " + hex(accel.i2cBus.read_byte_data(accel._i2cAddr, 0x0D)))
+    
     SAMPLE_RATE = 0x10
     TILT_DEBOUNCE = 5
     TILT_ANGLE = 10

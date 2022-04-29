@@ -243,7 +243,7 @@ class BG770A:
 		if self.sendATcmd(self.compose,">"):
 			ser.write(data.encode())
 		else:
-			debug_print("ERROR message: \"" + str(data.encode()) + "\" not send\r\n")
+			debug_print("ERROR message not send \"" + str(data.encode()) + "\"\r\n")
 
 	#----------------------------------------------------------------------------------------
 	#	GNSS Functions
@@ -281,7 +281,13 @@ if __name__=='__main__':
 	for p in ports:
 		print(p)
 
-	module = BG770A()	#(serial_port="/dev/ttyUSB0", serial_baudrate=9600, board="Sixfab NB-IoT Shield")
+	import sys
+	if "win" not in sys.platform: 
+		ser_port = "/dev/ttyUSB0"
+	else: 
+		ser_port = "COM4"
+
+	module = BG770A(serial_port = ser_port)	#(serial_port="/dev/ttyUSB0", serial_baudrate=115200, board="Sixfab NB-IoT Shield")
 
 	module.sendATcmd("AT")
 	module.sendATcmd("AT+CMEE=2")

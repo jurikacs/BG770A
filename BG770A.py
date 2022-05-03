@@ -4,6 +4,7 @@
 '''
 
 import csv
+import re
 import serial
 import sys
 import time
@@ -47,6 +48,7 @@ class BG770A:
 	domain_name = ""
 	port_number = ""
 	timeout = TIMEOUT	# default timeout
+	connectID = "0"		# defuault connect ID
 	
 	compose = ""
 	response = ""
@@ -77,17 +79,40 @@ class BG770A:
 		GPIO.output(RESET,GPIO.LOW)
 		
 	# Function for getting modem response
-	def getResponse(self, desired_response):
+	def getResponse(self, timeout_s = None):
+		if timeout_s is None:
+			timeout_s = self.timeout
 		if (ser.isOpen() == False):
 			ser.open()
-			
-		while 1:	
-			self.response =""
-			while(ser.in_waiting):
+		
+		self.response =""
+		start_time = time.time()
+		while(time.time() - start_time < timeout_s):	
+			if(ser.in_waiting):
+				self.response += ser.read(ser.in_waiting).decode('utf-8', errors='ignore')
+		if(self.response):
+			debug_print(self.response)
+
+	# Function for getting modem response
+	def waitUnsolicited(self, desired_response = "", timeout_s = None):
+		if timeout_s is None:
+			timeout_s = self.timeout
+		if (ser.isOpen() == False):
+			ser.open()
+		
+		self.response =""
+		start_time = time.time()
+		while(time.time() - start_time < timeout_s):	
+			if(ser.in_waiting):
 				self.response += ser.read(ser.in_waiting).decode('utf-8', errors='ignore')
 			if(self.response.find(desired_response) != -1):
 				debug_print(self.response)
-				break
+				return True
+		if(self.response):
+			debug_print("UNEXPECTED responce: " + self.response + " after " + str(timeout_s) + " sec, awaiting: " + desired_response + "\r\n")
+		else:
+			debug_print("TIMEOUT after " + str(timeout_s) + " sec, awaiting: " + desired_response + "\r\n")
+		return False
 
 	# Function for sending at command to BG770A.
 	def sendATcmd(self, command, desired_response = "OK\r\n", timeout_s = None):
@@ -186,13 +211,13 @@ class BG770A:
 
 	# Function for setting common mobile network parameters
 	def initNetwork(self):
-		self.sendATcmd("AT+CFUN=1", "OK\r\n", 2)
+		#self.sendATcmd("AT+CFUN=1", "OK\r\n", 2)
 		self.sendATcmd("AT+COPS?", "OK\r\n", 2)
 
 	# Function for cheking network registration
 	def checkRegistration(self):
-		self.sendATcmd("AT+CREG=2")
-		self.sendATcmd("AT+CEREG?")
+		self.sendATcmd("AT+CEREG=0")
+		self.sendATcmd("AT+CEREG?", "+CEREG: 0,1", 20)
 
 	# Function for getting signal quality
 	def getSignalQuality(self):
@@ -205,7 +230,7 @@ class BG770A:
 
 	# Function for configuring parameters of a TCP/IP context
 	def configTcpIpContext(self, contextID, APN, username = "", password = "", timeout_s = None):
-		self.compose = "AT+QICSGP=" + str(contextID) + ",1,\""
+		self.compose = "AT+QICSGP=" + contextID + ",1,\""
 		self.compose += str(APN) + "\",\""
 		self.compose += str(username) + "\",\""
 		self.compose += str(password) + "\",1"
@@ -213,17 +238,17 @@ class BG770A:
 
 	# Function for PDP context activation
 	def activatePdpContext(self, contextID, timeout_s = 150):
-		ret = self.sendATcmd("AT+QIACT=" + str(contextID), "OK\r\n", timeout_s)
+		ret = self.sendATcmd("AT+QIACT=" + contextID, "OK\r\n", timeout_s)
 		self.sendATcmd("AT+QIACT?", "OK\r\n", 10)
 		return ret
 
 	# Function for PDP context deactivation
 	def deactivatePdpContext(self, contextID, timeout_s = 40):
-		return self.sendATcmd("AT+QIDEACT=" + str(contextID), "OK\r\n", timeout_s)
+		return self.sendATcmd("AT+QIDEACT=" + contextID, "OK\r\n", timeout_s)
 
 	# Function for opening server connection
 	def openConnection(self, contextID, service_type = "UDP", timeout_s = 150):
-		self.compose = "AT+QIOPEN=" + str(contextID) + ",0,\""
+		self.compose = "AT+QIOPEN=" + contextID + "," + self.connectID + ",\""
 		self.compose += str(service_type) + "\",\""
 		self.compose += str(self.ip_address) + "\","
 		self.compose += str(self.port_number) + ",0,1"
@@ -231,7 +256,14 @@ class BG770A:
 
 	# Function for closing server connection
 	def closeConnection(self):
-		self.sendATcmd("AT+QICLOSE=0")
+		self.sendATcmd("AT+QICLOSE=" + self.connectID)
+
+	def runScenario(self, list_AT_cmd):
+		ret = True
+		for cmd in  list_AT_cmd:
+			ret &= self.sendATcmd(cmd[0], cmd[1], cmd[2])
+			delay(2500)
+		return ret
 
 	#----------------------------------------------------------------------------------------
 	#	UDP Protocols Functions
@@ -239,11 +271,21 @@ class BG770A:
 	
 	# Function for sending data via udp.
 	def sendUdpData(self, data):
-		self.compose = "AT+QISEND=0," + str(len(data))
+		self.compose = "AT+QISEND=" + self.connectID + "," + str(len(data))
 		if self.sendATcmd(self.compose,">"):
 			ser.write(data.encode())
 		else:
 			debug_print("ERROR message not send \"" + str(data.encode()) + "\"\r\n")
+
+	# Function for receiving  data via udp.
+	def recvUdpData(self):
+		ret = ""
+		if(self.waitUnsolicited("+QIURC: \"recv\"," + self.connectID), 5):
+			regex = re.compile(r'.+\s+SEND OK\s+\+QIURC: "recv",\d+,(\d+)\s+(.+)')
+			result = regex.match(self.response)
+			if result:
+				ret = result.group(2)
+		return ret
 
 	#----------------------------------------------------------------------------------------
 	#	GNSS Functions
@@ -281,29 +323,32 @@ if __name__=='__main__':
 	for p in ports:
 		print(p)
 
-	import sys
 	if "win" not in sys.platform: 
 		ser_port = "/dev/ttyUSB0"
 	else: 
 		ser_port = "COM4"
 
-	module = BG770A(serial_port = ser_port)	#(serial_port="/dev/ttyUSB0", serial_baudrate=115200, board="Sixfab NB-IoT Shield")
+	module = BG770A(serial_port = ser_port)
 
 	module.sendATcmd("AT")
 	module.sendATcmd("AT+CMEE=2")
 	module.sendATcmd("AT+CPIN?", "OK\r\n", 5)
-	module.sendATcmd("AT+CPIN=\"7161\"", "OK\r\n", 5)
+	#module.sendATcmd("AT+CPIN=\"1234\"", "OK\r\n", 5)
+	#module.sendATcmd("AT+CFUN=1")
 
-	contextID = 1
-	module.setIPAddress("89.107.68.161")
-	module.setPort(9098)
+	module.sendATcmd("AT+COPS?", "OK\r\n", 3)
+	module.checkRegistration()
 
-	module.initNetwork();
+	contextID = "1"
+	module.setIPAddress("52.215.34.155")	# "89.107.68.161"
+	module.setPort(7)						# 9098
+
 	module.configTcpIpContext(contextID, "web.vodafone.de")
 	module.activatePdpContext(contextID, 5)
 
 	module.openConnection(contextID, "UDP", 5)
-	module.sendUdpData("Hello Finamon")
+	module.sendUdpData("Hello " + module.board)
+	print("echo: " + module.recvUdpData())
 
 	module.closeConnection()
 	module.deactivatePdpContext(contextID, 5)

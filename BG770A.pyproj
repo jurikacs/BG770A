@@ -29,6 +29,7 @@
       <SubType>Code</SubType>
     </Compile>
     <Compile Include="MC3479.py" />
+    <Compile Include="nbiot\pc_test.py" />
     <Compile Include="position_test.py" />
     <Compile Include="modem_test.py">
       <SubType>Code</SubType>

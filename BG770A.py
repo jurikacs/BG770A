@@ -4,11 +4,12 @@
 '''
 
 import csv
+import pynmea2
 import re
 import serial
 import sys
 import time
-
+import pprint
 
 bRPi = False
 if "win" not in sys.platform: 
@@ -19,6 +20,7 @@ if "win" not in sys.platform:
 RESET = 16
 
 # global variables
+DEBUG = 1
 TIMEOUT = 1.0 # seconds
 ser = serial.Serial()
 
@@ -28,8 +30,9 @@ ser = serial.Serial()
 
 # function for printing debug message 
 def debug_print(message):
-	print(message)
-	#print(time.time(), message)
+	if DEBUG:
+		print(message)
+		#print(time.time(), message)
 
 # function for getting time as miliseconds
 def millis():
@@ -48,7 +51,7 @@ class BG770A:
 	domain_name = ""
 	port_number = ""
 	timeout = TIMEOUT	# default timeout
-	connectID = "0"		# defuault connect ID
+	connectID = '0'		# defuault connect ID
 	
 	compose = ""
 	response = ""
@@ -300,20 +303,44 @@ class BG770A:
 		self.sendATcmd("AT+QGPSEND")
 		self.sendATcmd("AT+QGPS?")
 
-	def updateGnssLocation(self):
-		if(self.sendATcmd("AT+QGPSLOC?", "OK\r\n", 2.)):
-			fields = list(csv.reader([self.response[10:]]))[0]
-			self.latitude = fields[1]
-			self.longitude = fields[2]
-		else:
-			print (self.response)
-			self.latitude = .0
-			self.longitude = .0
-		return [self.latitude, self.longitude]
+	def acquirePositionInfo(self):
+		self.sendATcmd('AT+QGPSLOC?')
+		if(self.response.find('ERROR') != -1):
+			return False
+		start = len('AT+QGPSLOC?\r\r\n+QGPSLOC: ')
+		end = self.response.find('\r', start)
+		line = self.response[start : end]
+		#debug_print(line)
+		fields = list(csv.reader([line]))[0]
+		gpsloc = {}
+		parameters = ['utc','latitude','longitude','hdop','altitude','fix','cog','spkm','spkn','date','nsat']
+		for i, param in enumerate(parameters):
+			gpsloc[param] = fields[i]
+		return gpsloc
 
-	def getSatellitesInfo(self):
+	def acquireSatellitesInfo(self):
 		self.sendATcmd('AT+QGPSGNMEA="GSV"')
+		start = len('AT+QGPSGNMEA="GSV"\r\r\n')
+		sat_info = []
+		while (True):
+			start = self.response.find('$G', start + 6)
+			end = self.response.find('*', start) + 3
+			if (start < 0):
+				break
+			line = self.response[start : end]
+			msg = pynmea2.parse(line)
+			sat_info.append(msg)
+		return sat_info
 
+	def acquireNmeaSentence(self, sentence = 'GGA'):
+		self.response =''
+		self.sendATcmd('AT+QGPSGNMEA="' + sentence + '"')
+		start = len('AT+QGPSGNMEA="XXX"\r\r\n+QGPSGNMEA: ')
+		end = self.response.find('*', start) + 3
+		line = self.response[start : end]
+		#debug_print(line)
+		msg = pynmea2.parse(line)
+		debug_print(repr(msg))
 
 
 if __name__=='__main__':
@@ -334,12 +361,11 @@ if __name__=='__main__':
 	module.sendATcmd("AT+CMEE=2")
 	module.sendATcmd("AT+CPIN?", "OK\r\n", 5)
 	#module.sendATcmd("AT+CPIN=\"1234\"", "OK\r\n", 5)
-	#module.sendATcmd("AT+CFUN=1")
 
 	module.sendATcmd("AT+COPS?", "OK\r\n", 3)
 	module.checkRegistration()
 
-	contextID = "1"
+	contextID = '1'
 	module.setIPAddress("52.215.34.155")	# "89.107.68.161"
 	module.setPort(7)						# 9098
 
@@ -355,3 +381,5 @@ if __name__=='__main__':
 
 	#module.gnssOn();
 	#module.updateGnssLocation();
+
+

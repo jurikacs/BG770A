@@ -4,7 +4,7 @@
     <SchemaVersion>2.0</SchemaVersion>
     <ProjectGuid>bc8707bb-8bf3-4490-b43a-2dc35d85de39</ProjectGuid>
     <ProjectHome>.</ProjectHome>
-    <StartupFile>BG770A.py</StartupFile>
+    <StartupFile>position_test.py</StartupFile>
     <SearchPath>
     </SearchPath>
     <WorkingDirectory>.</WorkingDirectory>

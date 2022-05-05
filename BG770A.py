@@ -55,10 +55,10 @@ class BG770A:
 	
 	compose = ""
 	response = ""
+	
+	writeGnssFile = "GNSS05.log"
+	log_file = None
 
-	latitude = 0
-	longitude = 0
-		
 	# Default Initializer
 	def __init__(self, serial_port="COM4", serial_baudrate=115200, board="Finamon GNSS/Modem BG770A Shield"):
 		
@@ -153,7 +153,7 @@ class BG770A:
 		debug_print("TIMEOUT after " + str(timeout_s) + " sec, AT command: " + self.compose + "\r\n")
 		return False
 
-	# Function for saving conf. and reset BG770A module
+	# TODO Function for saving conf. and reset BG770A module
 	def resetModule(self):
 		self.saveConfigurations()
 		delay(200)
@@ -165,15 +165,15 @@ class BG770A:
 
 	# Function for getting IMEI number
 	def getIMEI(self):
-		return self.sendATcmd("AT+CGSN=1","OK\r\n")
+		return self.sendATcmd("AT+CGSN=1")
 
 	# Function for getting firmware info
 	def getFirmwareInfo(self):
-		return self.sendATcmd("AT+CGMR","OK\r\n")
+		return self.sendATcmd("AT+CGMR")
 
 	# Function for getting hardware info
 	def getHardwareInfo(self):
-		return self.sendATcmd("AT+CGMM","OK\r\n")
+		return self.sendATcmd("AT+CGMM")
 
 	# Function for getting self.ip_address
 	def getIPAddress(self):
@@ -298,10 +298,14 @@ class BG770A:
 		self.sendATcmd("AT+QGPS?")
 		self.sendATcmd("AT+QGPS=1")
 		self.sendATcmd("AT+QGPS?")
+		if self.writeGnssFile:
+			self.log_file = open(self.writeGnssFile, "w", newline='\n')
 
 	def gnssOff(self):
 		self.sendATcmd("AT+QGPSEND")
 		self.sendATcmd("AT+QGPS?")
+		if self.writeGnssFile:
+			self.log_file.close()
 
 	def acquirePositionInfo(self):
 		self.sendATcmd('AT+QGPSLOC?')
@@ -310,6 +314,8 @@ class BG770A:
 		start = len('AT+QGPSLOC?\r\r\n+QGPSLOC: ')
 		end = self.response.find('\r', start)
 		line = self.response[start : end]
+		if not line:
+			return False
 		#debug_print(line)
 		fields = list(csv.reader([line]))[0]
 		gpsloc = {}
@@ -328,6 +334,9 @@ class BG770A:
 			if (start < 0):
 				break
 			line = self.response[start : end]
+			if self.writeGnssFile:
+				#debug_print(line)
+				self.log_file.write(line + '\n')
 			msg = pynmea2.parse(line)
 			sat_info.append(msg)
 		return sat_info
@@ -335,10 +344,17 @@ class BG770A:
 	def acquireNmeaSentence(self, sentence = 'GGA'):
 		self.response =''
 		self.sendATcmd('AT+QGPSGNMEA="' + sentence + '"')
-		start = len('AT+QGPSGNMEA="XXX"\r\r\n+QGPSGNMEA: ')
+		start = self.response.find('+QGPSGNMEA: ') 
+		if (start < 0):
+			return	
+		start += len('+QGPSGNMEA: ')
 		end = self.response.find('*', start) + 3
+		if (end < 0):
+			return	
 		line = self.response[start : end]
-		#debug_print(line)
+		if self.writeGnssFile:
+			#debug_print(line)
+			self.log_file.write(line + '\n')
 		msg = pynmea2.parse(line)
 		debug_print(repr(msg))
 
@@ -379,7 +395,5 @@ if __name__=='__main__':
 	module.closeConnection()
 	module.deactivatePdpContext(contextID, 5)
 
-	#module.gnssOn();
-	#module.updateGnssLocation();
-
+	
 

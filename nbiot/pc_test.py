@@ -4,6 +4,8 @@ import sys
 
 import re
 
+#51.22905639120505, 6.714667813472686
+#51.22906, 6.71467
 
 regex = re.compile(r'.+\s+SEND OK\s+\+QIURC: "recv",\d+,(\d+)\s+(.+)')
 #test = "+QIURC: \"recv\",0,13\r\nHello Finamon"

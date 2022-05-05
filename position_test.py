@@ -3,28 +3,34 @@
 '''
 
 import BG770A
-import pynmea2
 import pprint
 import time
+
 
 navigator = BG770A.BG770A()
 
 navigator.gnssOn()
 
+sleep_time = 10
+start_time = time.time()
 while(not navigator.acquirePositionInfo()):
     navigator.sendATcmd('AT+QGPSGNMEA="GSV"')
-    time.sleep(10)
+    time.sleep(sleep_time)
 
-navigator.acquireNmeaSentence("GGA")
-navigator.acquireNmeaSentence("GSA")
-navigator.acquireNmeaSentence("RMC")
-navigator.acquireNmeaSentence("VTG")
+print ("position search time %s seconds" % int(time.time() - start_time))
 
-location_dict = navigator.acquirePositionInfo()
-pprint.pprint(location_dict)
+for i in range(50):
+    navigator.acquireNmeaSentence("GGA")
+    navigator.acquireNmeaSentence("GSA")
+    navigator.acquireNmeaSentence("RMC")
+    navigator.acquireNmeaSentence("VTG")
 
-sat_info = navigator.acquireSatellitesInfo()
-pprint.pprint(repr(sat_info))
+    sat_info = navigator.acquireSatellitesInfo()
+    #pprint.pprint(repr(sat_info))
+
+    location_dict = navigator.acquirePositionInfo()
+    #pprint.pprint(location_dict)
+    time.sleep(2.)
 
 navigator.gnssOff()
 

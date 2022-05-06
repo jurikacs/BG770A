@@ -4,7 +4,7 @@
     <SchemaVersion>2.0</SchemaVersion>
     <ProjectGuid>bc8707bb-8bf3-4490-b43a-2dc35d85de39</ProjectGuid>
     <ProjectHome>.</ProjectHome>
-    <StartupFile>position_test.py</StartupFile>
+    <StartupFile>demo_geofences.py</StartupFile>
     <SearchPath>
     </SearchPath>
     <WorkingDirectory>.</WorkingDirectory>
@@ -31,7 +31,7 @@
     </Compile>
     <Compile Include="MC3479.py" />
     <Compile Include="nbiot\pc_test.py" />
-    <Compile Include="position_test.py" />
+    <Compile Include="demo_geofences.py" />
     <Compile Include="modem_test.py">
       <SubType>Code</SubType>
     </Compile>
@@ -39,6 +39,7 @@
     <Compile Include="nbiot\nbiot.py" />
     <Compile Include="nbiot\SDL_Pi_HDC1000.py" />
     <Compile Include="nbiot\__init__.py" />
+    <Compile Include="position_test.py" />
   </ItemGroup>
   <ItemGroup>
     <Folder Include="nbiot\" />

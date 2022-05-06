@@ -56,7 +56,7 @@ class BG770A:
 	compose = ""
 	response = ""
 	
-	writeGnssFile = "GNSS05.log"
+	writeGnssFile = "GNSS07.log"
 	log_file = None
 
 	# Default Initializer
@@ -157,7 +157,7 @@ class BG770A:
 	def resetModule(self):
 		self.saveConfigurations()
 		delay(200)
-		self.sendATcmd("AT+NRB","")
+		#TODO HW reset
 
 	# Function for save configurations shield be done in current session. 
 	def saveConfigurations(self):
@@ -165,7 +165,7 @@ class BG770A:
 
 	# Function for getting IMEI number
 	def getIMEI(self):
-		return self.sendATcmd("AT+CGSN=1")
+		return self.sendATcmd("AT+CGSN")
 
 	# Function for getting firmware info
 	def getFirmwareInfo(self):
@@ -307,6 +307,26 @@ class BG770A:
 		if self.writeGnssFile:
 			self.log_file.close()
 
+	def acquireGnssSettings(self):
+		settings = [
+			"outport",
+			"gnssconfig",
+			"nmeafmt",
+			"gpsnmeatype",
+			"glonassnmeatype",
+			"nmeasrc",
+			"autogps",
+			"priority",
+			"xtrafilesize",
+			"xtra_info",
+			"gpsdop",
+			"estimation_error",
+			"xtra_download",
+			"test_mode",
+		]
+		for setting in settings:
+			self.sendATcmd('AT+QGPSCFG="' + setting + '"')
+
 	def acquirePositionInfo(self):
 		self.sendATcmd('AT+QGPSLOC?')
 		if(self.response.find('ERROR') != -1):
@@ -357,6 +377,50 @@ class BG770A:
 			self.log_file.write(line + '\n')
 		msg = pynmea2.parse(line)
 		debug_print(repr(msg))
+
+
+	#----------------------------------------------------------------------------------------
+	#	Geofences Functions
+	#----------------------------------------------------------------------------------------
+	#+QCFGEXT: "addgeo",<geoid>,<mode>,<shape>,<lat1>,<lon1>,<lat2>,[<lon2>,[<lat3>,<lon3>[,<lat4>,<lon4>]]]
+
+	#	<geoid> Integer type. Geo-fence ID. Range: 0–9.
+	#	<mode> Integer type. URC report mode.
+	#		0 Disable URC to be reported when entering or leaving the geo-fence
+	#		1 Enable URC to be reported when entering the geo-fence
+	#		2 Enable URC to be reported when leaving the geo-fence
+	#		3 Enable URC to be reported when entering or leaving the geo-fence
+	#	<shape> Integer type. Geo-fence shape.
+	#		0 Circularity with center and radius
+	#		1 Circularity with center and one point on the circle
+	#		2 Triangle
+	#		3 Quadrangle
+
+	def addGeofence(self, geoid, mode, shape, geofence, radius = 0):
+		coord_string = ''
+		for i, position in enumerate(geofence):
+			coord_string += ',' + str(position[0]) + ',' + str(position[1])
+		if radius:
+			coord_string += ',' + str(radius)
+		self.sendATcmd('AT+QCFGEXT="addgeo",%d,%d,%d%s' % (int(geoid), int(mode), int(shape), coord_string))
+
+	def deleteGeofence(self, geoid):
+		self.sendATcmd('AT+QCFGEXT="deletegeo",' + str(geoid))
+
+	# return value: position with respect to geo-fence.
+	#	0 Position unknown
+	#	1 Position is inside the geo-fence
+	#	2 Position is outside the geo-fence
+	#	3 Geo-fence ID does not exist
+	def queryGeofence(self, geoid):
+		cmd_string = '"querygeo",' + str(geoid)
+		self.sendATcmd('AT+QCFGEXT=' + cmd_string)
+		if(self.response.find("+CME ERROR:") == -1):
+			pos = self.response.find(cmd_string+',')
+			return int(self.response[pos + len(cmd_string) + 1])
+		else:
+			return 3
+		
 
 
 if __name__=='__main__':

@@ -6,7 +6,14 @@ import BG770A
 import pprint
 import time
 
-navigator = BG770A.BG770A()
+def rect(lat, lon, x, y):
+    x = x/2
+    y = y/2
+    return [(round(lat + x,5), round(lon + y,5)),
+            (round(lat + x,5), round(lon - y,5)),
+            (round(lat - x,5), round(lon - y,5)),
+            (round(lat - x,5), round(lon + y,5))]
+
 
 geofence_center =  [(51.22906, 6.71467)]
 
@@ -17,7 +24,6 @@ geofence_quad = [
     (51.22900, 6.71468),
     ]
 
-
 geofence_query = [
     "position unknown",
     "position is inside the geo-fence",
@@ -25,8 +31,9 @@ geofence_query = [
     "geo-fence ID does not exist"
     ]
 
-navigator.gnssOn()
 
+navigator = BG770A.BG770A()
+navigator.gnssOn()
 time.sleep(2.)
 
 sleep_time = 10
@@ -58,7 +65,6 @@ for i in range(10):
     for geoid in range(9):
         print(geofence_query[navigator.queryGeofence(geoid)])
     time.sleep(10.)
-
 
 navigator.gnssOff()
 

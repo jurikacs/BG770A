@@ -9,7 +9,7 @@ remote_ip = "89.107.68.161" # change with your remote ip
 remote_port = 9098          # change with your remote port
 
 if "win" not in sys.platform: 
-	ser_port = "/dev/ttyUSB0"
+	ser_port = "/dev/serial0"
 else: 
 	ser_port = "COM4"
 

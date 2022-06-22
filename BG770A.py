@@ -17,10 +17,10 @@ if "win" not in sys.platform:
 	bRPi = True
 
 # Peripheral Pin Definations
-RESET = 16
+RESET = 19
+PWRKEY = 26
 
 # global variables
-DEBUG = 1
 TIMEOUT = 1.0 # seconds
 ser = serial.Serial()
 
@@ -28,18 +28,13 @@ ser = serial.Serial()
 #	Private Methods#
 #----------------------------------------
 
-# function for printing debug message 
-def debug_print(message):
-	if DEBUG:
-		print(message)
-		#print(time.time(), message)
-
 # function for getting time as miliseconds
 def millis():
 	return int(time.time()*1000)
 
 # function for delay as miliseconds
 def delay(ms):
+	#debug_print("sleep, s " + str(ms/1000.0)) 
 	time.sleep(float(ms/1000.0))
 
 #----------------------------------------
@@ -47,6 +42,7 @@ def delay(ms):
 #----------------------------------------
 class BG770A:
 	board = ""			# Shield name
+	IMEI = "not defined"
 	ip_address = ""
 	domain_name = ""
 	port_number = ""
@@ -55,22 +51,29 @@ class BG770A:
 	
 	compose = ""
 	response = ""
-	
-	writeGnssFile = "GNSS07.log"
-	log_file = None
 
+	latitude = 0
+	longitude = 0
+	
+	mgtt_client_idx = "0"
+
+	multiline = False
+	
 	# Default Initializer
-	def __init__(self, serial_port="COM4", serial_baudrate=115200, board="Finamon GNSS/Modem BG770A Shield"):
+	def __init__(self, serial_port="/dev/serial0", serial_baudrate=115200, board="Finamon GNSS/Modem BG770A Shield"):
 		
 		self.board = board
 	
 		ser.port = serial_port
+		if "win" in sys.platform:
+			ser.port = "COM4"
+
 		ser.baudrate = serial_baudrate
 		ser.parity=serial.PARITY_NONE
 		ser.stopbits=serial.STOPBITS_ONE
 		ser.bytesize=serial.EIGHTBITS
 
-		debug_print(self.board + " created")
+		self.debug_print(self.board + " created")
 
 		if not bRPi:
 			return
@@ -79,8 +82,23 @@ class BG770A:
 		GPIO.setwarnings(False)
 		
 		GPIO.setup(RESET,GPIO.OUT)
+		GPIO.output(RESET,GPIO.HIGH)
+		delay(1000)
 		GPIO.output(RESET,GPIO.LOW)
+		delay(500)
+
+		GPIO.setup(PWRKEY,GPIO.OUT)
+		GPIO.output(PWRKEY,GPIO.HIGH)
+		delay(1000)
+		GPIO.output(PWRKEY,GPIO.LOW)
 		
+		ser.open()
+		self.waitUnsolicited("APP RDY", 20)
+		#delay(3000)
+		
+	def close(self):
+		ser.close()
+
 	# Function for getting modem response
 	def getResponse(self, timeout_s = None):
 		if timeout_s is None:
@@ -94,7 +112,7 @@ class BG770A:
 			if(ser.in_waiting):
 				self.response += ser.read(ser.in_waiting).decode('utf-8', errors='ignore')
 		if(self.response):
-			debug_print(self.response)
+			self.debug_print(self.response)
 
 	# Function for getting modem response
 	def waitUnsolicited(self, desired_response = "", timeout_s = None):
@@ -109,12 +127,12 @@ class BG770A:
 			if(ser.in_waiting):
 				self.response += ser.read(ser.in_waiting).decode('utf-8', errors='ignore')
 			if(self.response.find(desired_response) != -1):
-				debug_print(self.response)
+				self.debug_print(self.response)
 				return True
 		if(self.response):
-			debug_print("UNEXPECTED responce: " + self.response + " after " + str(timeout_s) + " sec, awaiting: " + desired_response + "\r\n")
+			self.debug_print("UNEXPECTED responce: " + self.response + " after " + str(timeout_s) + " sec, awaiting: " + desired_response + "\r\n")
 		else:
-			debug_print("TIMEOUT after " + str(timeout_s) + " sec, awaiting: " + desired_response + "\r\n")
+			self.debug_print("TIMEOUT after " + str(timeout_s) + " sec, awaiting: " + desired_response + "\r\n")
 		return False
 
 	# Function for sending at command to BG770A.
@@ -139,21 +157,20 @@ class BG770A:
 					self.response += ser.read(ser.in_waiting).decode('utf-8', errors='ignore')
 				delay(100)
 			except Exception as e:
-				debug_print(e.Message)
-			# debug_print(self.response)
+				self.debug_print(e.Message)
 					
 			if(self.response.find(desired_response) != -1):
-				debug_print(self.response)
+				self.debug_print(self.response)
 				return True
 
 			if(self.response.find("ERROR") != -1):
-				debug_print(self.response)
+				self.debug_print(self.response)
 				return False
 
-		debug_print("TIMEOUT after " + str(timeout_s) + " sec, AT command: " + self.compose + "\r\n")
+		self.debug_print("TIMEOUT after " + str(timeout_s) + " sec, AT command: " + self.compose + "\r\n")
 		return False
 
-	# TODO Function for saving conf. and reset BG770A module
+	# Function for saving conf. and reset BG770A module
 	def resetModule(self):
 		self.saveConfigurations()
 		delay(200)
@@ -165,15 +182,19 @@ class BG770A:
 
 	# Function for getting IMEI number
 	def getIMEI(self):
-		return self.sendATcmd("AT+CGSN")
+		self.sendATcmd("AT+GSN","OK\r\n")
+		regex = re.compile(r'AT\+GSN\s+(\d+)')
+		result = regex.match(self.response)
+		if result:
+			self.IMEI = result.group(1)
 
 	# Function for getting firmware info
 	def getFirmwareInfo(self):
-		return self.sendATcmd("AT+CGMR")
+		return self.sendATcmd("AT+CGMR","OK\r\n")
 
 	# Function for getting hardware info
 	def getHardwareInfo(self):
-		return self.sendATcmd("AT+CGMM")
+		return self.sendATcmd("AT+CGMM","OK\r\n")
 
 	# Function for getting self.ip_address
 	def getIPAddress(self):
@@ -220,11 +241,12 @@ class BG770A:
 	# Function for cheking network registration
 	def checkRegistration(self):
 		self.sendATcmd("AT+CEREG=0")
-		self.sendATcmd("AT+CEREG?", "+CEREG: 0,1", 20)
+		self.sendATcmd("AT+CEREG?", "+CEREG: 0,5", 120)
 
 	# Function for getting signal quality
 	def getSignalQuality(self):
-		return self.sendATcmd("AT+CSQ","OK\r\n")
+		self.sendATcmd("AT+CSQ","OK\r\n", 5)
+		return self.sendATcmd("AT+QCSQ","OK\r\n", 5)
 
 
 	#----------------------------------------------------------------------------------------
@@ -254,7 +276,7 @@ class BG770A:
 		self.compose = "AT+QIOPEN=" + contextID + "," + self.connectID + ",\""
 		self.compose += str(service_type) + "\",\""
 		self.compose += str(self.ip_address) + "\","
-		self.compose += str(self.port_number) + ",0,1"
+		self.compose += str(self.port_number) + ",0,0"
 		return self.sendATcmd(self.compose, "+QIOPEN: 0,", timeout_s)
 
 	# Function for closing server connection
@@ -277,8 +299,9 @@ class BG770A:
 		self.compose = "AT+QISEND=" + self.connectID + "," + str(len(data))
 		if self.sendATcmd(self.compose,">"):
 			ser.write(data.encode())
+			self.waitUnsolicited("SEND OK", 5)
 		else:
-			debug_print("ERROR message not send \"" + str(data.encode()) + "\"\r\n")
+			self.debug_print("ERROR message not send \"" + str(data.encode()) + "\"\r\n")
 
 	# Function for receiving  data via udp.
 	def recvUdpData(self):
@@ -288,6 +311,7 @@ class BG770A:
 			result = regex.match(self.response)
 			if result:
 				ret = result.group(2)
+			self.sendATcmd("AT+QIRD=" + self.connectID)
 		return ret
 
 	#----------------------------------------------------------------------------------------
@@ -297,15 +321,15 @@ class BG770A:
 	def gnssOn(self):
 		self.sendATcmd("AT+QGPS?")
 		self.sendATcmd("AT+QGPS=1")
-		self.sendATcmd("AT+QGPS?")
-		if self.writeGnssFile:
-			self.log_file = open(self.writeGnssFile, "w", newline='\n')
+		delay(1000)
+		if self.sendATcmd("AT+QGPS?", "+QGPS:1"):
+			return True
+		else:
+			return False
 
 	def gnssOff(self):
 		self.sendATcmd("AT+QGPSEND")
 		self.sendATcmd("AT+QGPS?")
-		if self.writeGnssFile:
-			self.log_file.close()
 
 	def acquireGnssSettings(self):
 		settings = [
@@ -324,6 +348,7 @@ class BG770A:
 			"xtra_download",
 			"test_mode",
 		]
+		self.sendATcmd('AT+QGPSCFG=?')
 		for setting in settings:
 			self.sendATcmd('AT+QGPSCFG="' + setting + '"')
 
@@ -376,7 +401,7 @@ class BG770A:
 			#debug_print(line)
 			self.log_file.write(line + '\n')
 		msg = pynmea2.parse(line)
-		debug_print(repr(msg))
+		self.debug_print(repr(msg))
 
 
 	#----------------------------------------------------------------------------------------
@@ -384,7 +409,7 @@ class BG770A:
 	#----------------------------------------------------------------------------------------
 	#+QCFGEXT: "addgeo",<geoid>,<mode>,<shape>,<lat1>,<lon1>,<lat2>,[<lon2>,[<lat3>,<lon3>[,<lat4>,<lon4>]]]
 
-	#	<geoid> Integer type. Geo-fence ID. Range: 0–9.
+	#	<geoid> Integer type. Geo-fence ID. Range: 09.
 	#	<mode> Integer type. URC report mode.
 	#		0 Disable URC to be reported when entering or leaving the geo-fence
 	#		1 Enable URC to be reported when entering the geo-fence
@@ -420,7 +445,64 @@ class BG770A:
 			return int(self.response[pos + len(cmd_string) + 1])
 		else:
 			return 3
-		
+
+	#----------------------------------------------------------------------------------------
+	#	IoT Functions
+	#----------------------------------------------------------------------------------------
+
+	def acquireMqttSettings(self, client_idx = "0"):
+		settings = [
+			"aliauth",
+			"keepalive",
+			"pdpcid",
+			"recv/mode",
+			"session",
+			"ssl",
+			"timeout",
+			"version",
+			"will"]
+		self.sendATcmd('AT+QMTCFG=?')
+		for setting in settings:
+			self.sendATcmd('AT+QMTCFG="' + setting + '",' + client_idx)
+
+	def openMqttConnection(self, client_idx = "0", host_name = "", port = 1883):
+		self.mgtt_client_idx = client_idx
+		self.sendATcmd('AT+QMTOPEN='+ self.mgtt_client_idx +',"' + host_name + '",' + str(port))
+		self.waitUnsolicited( "+QMTOPEN:", 5)
+		self.sendATcmd('AT+QMTOPEN?')
+
+	def connectMqttClient(self, client_id_string, username, password):
+		self.sendATcmd('AT+QMTCONN='+ self.mgtt_client_idx +',"' + client_id_string + '","' + username + '","' + password+ '"')
+		self.waitUnsolicited( "+QMTCONN:", 5)
+
+	def publishMqttMessage(self, topic, message):
+		self.compose = 'AT+QMTPUB='+ self.mgtt_client_idx +',1,1,0,"' + topic + '",' + str(len(message))
+		if self.sendATcmd(self.compose,">"):
+			ser.write(message.encode())
+			self.waitUnsolicited("+QMTPUB:", 5)
+		else:
+			self.debug_print("ERROR mqqt message \"" + str(message.encode()) + "\" not publish\r\n")
+
+	def subscribeToMqttTopic(self, topic):
+		self.sendATcmd('AT+QMTSUB='+ self.mgtt_client_idx +',1,"' + topic + '",2')
+		self.waitUnsolicited("+QMTSUB:", 5)
+
+	def unsubscribeFromMqttTopic(self, topic):
+		self.sendATcmd('AT+QMTUNS='+ self.mgtt_client_idx +',1,"' + topic + '"')
+		self.waitUnsolicited("+QMTUNS:", 5)
+
+
+	#----------------------------------------------------------------------------------------
+	#	Debug Functions
+	#----------------------------------------------------------------------------------------
+
+	# function for printing debug message 
+	def debug_print(self, message):
+		if not self.multiline:
+			message = message.replace("\r", ".") 
+			message = message.replace("\n", ".")
+		print('[' + time.strftime("%H:%M:%S") + '] ' + message)	
+
 
 
 if __name__=='__main__':
@@ -431,33 +513,51 @@ if __name__=='__main__':
 		print(p)
 
 	if "win" not in sys.platform: 
-		ser_port = "/dev/ttyUSB0"
+		ser_port = "/dev/serial0"
 	else: 
 		ser_port = "COM4"
 
 	module = BG770A(serial_port = ser_port)
-
+	delay(2000)
 	module.sendATcmd("AT")
+	module.getHardwareInfo()
+	module.getFirmwareInfo()
+	module.getIMEI()
+
 	module.sendATcmd("AT+CMEE=2")
 	module.sendATcmd("AT+CPIN?", "OK\r\n", 5)
 	#module.sendATcmd("AT+CPIN=\"1234\"", "OK\r\n", 5)
+	module.sendATcmd("AT+CFUN?")
+	module.sendATcmd("AT+CREG=0", "OK\r\n", 10)
+	#module.sendATcmd("AT+COPS=?", "OK\r\n", 600)
+	while not module.sendATcmd("AT+CREG?", "+CREG: 0,5", 10):
+		delay(10*1000)
 
-	module.sendATcmd("AT+COPS?", "OK\r\n", 3)
+	module.getSignalQuality()
 	module.checkRegistration()
+	module.sendATcmd("AT+QNWINFO", "OK\r\n", 10)
 
-	contextID = '1'
+	contextID = "1"
 	module.setIPAddress("52.215.34.155")	# "89.107.68.161"
 	module.setPort(7)						# 9098
 
-	module.configTcpIpContext(contextID, "web.vodafone.de")
+	module.configTcpIpContext(contextID, "wsim")
 	module.activatePdpContext(contextID, 5)
 
 	module.openConnection(contextID, "UDP", 5)
-	module.sendUdpData("Hello " + module.board)
-	print("echo: " + module.recvUdpData())
+	module.sendUdpData("Hello " + module.board + " IMEI: " + module.IMEI)
+	module.recvUdpData()
 
 	module.closeConnection()
 	module.deactivatePdpContext(contextID, 5)
-
+	#module.gnssOn();
+	#module.updateGnssLocation();
+	module.close()
 	
+#AT+COPS=? +COPS:
+#	(1,"Vodafone.de","Vodafone","26202",9),
+#	(1,"Telekom.de","TDG","26201",8),
+#	(1,"o2 - de","o2 - de","26203",8),
+#	(1,"Vodafone.de","Vodafone","26202",8),
+#	,(0,1,2,3,4),(0,1,2)
 

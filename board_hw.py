@@ -10,9 +10,13 @@ if "win" not in sys.platform:
 	import RPi.GPIO as GPIO
 	bRPi = True
 
-# Peripheral Pin Definations
-USER_BUTTON = 21
-USER_LED = 20
+# Peripheral Pin Definations SixFab
+#USER_BUTTON = 21  
+#USER_LED = 20
+
+# Peripheral Pin Definations Finamon
+USER_BUTTON = 27  
+USER_LED = 22
 
 VDD_EXT = 6
 LUX_CHANNEL = 0
@@ -39,7 +43,7 @@ class board_hw:
 
 	# Function for reading user button
 	def readUserButton(self):
-		GPIO.setup(USER_BUTTON, GPIO.IN)
+		GPIO.setup(USER_BUTTON, GPIO.IN, pull_up_down = GPIO.PUD_UP)
 		return GPIO.input(USER_BUTTON)
 
 	# Function for turning on user LED
@@ -61,17 +65,19 @@ class board_hw:
 
 if __name__=='__main__':
 
-	shield = board_hw()
+    shield = board_hw()
 
-	print("user LED ON") 
-	shield.turnOnUserLED()
-	time.sleep(2)
+    for i in range (10):
+        print("user LED ON") 
+        shield.turnOnUserLED()
+        time.sleep(1)
 
-	print("user LED OFF") 
-	shield.turnOffUserLED()
+        print("user LED OFF") 
+        shield.turnOffUserLED()
+        time.sleep(1)
 
-	while(True):
-		if shield.readUserButton():
-			shield.turnOffUserLED()
-		else:
-			shield.turnOnUserLED()
+    while(True):
+        if shield.readUserButton():
+            shield.turnOffUserLED()
+        else:
+            shield.turnOnUserLED()

@@ -4,7 +4,7 @@
     <SchemaVersion>2.0</SchemaVersion>
     <ProjectGuid>bc8707bb-8bf3-4490-b43a-2dc35d85de39</ProjectGuid>
     <ProjectHome>.</ProjectHome>
-    <StartupFile>demo_geofences.py</StartupFile>
+    <StartupFile>demo_mqtt.py</StartupFile>
     <SearchPath>
     </SearchPath>
     <WorkingDirectory>.</WorkingDirectory>
@@ -29,7 +29,12 @@
     <Compile Include="board_test.py">
       <SubType>Code</SubType>
     </Compile>
+    <Compile Include="demo_mqtt.py" />
+    <Compile Include="demo_echo.py" />
     <Compile Include="MC3479.py" />
+    <Compile Include="MC34X9.py" />
+    <Compile Include="nbiot\micro_pressure.py" />
+    <Compile Include="nbiot\MPRLS.py" />
     <Compile Include="nbiot\pc_test.py" />
     <Compile Include="demo_geofences.py" />
     <Compile Include="modem_test.py">

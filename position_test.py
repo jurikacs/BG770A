@@ -13,7 +13,7 @@ print("gps start at " + time.strftime("%H:%M:%S"))
 while(True):
     time.sleep(2.)
     
-    navigator.updateGnssLocation()
+    navigator.acquirePositionInfo()
     print("position latitude: " + str(navigator.latitude) +  ", longitude: " + str(navigator.longitude))
     
     navigator.getSatellitesInfo()

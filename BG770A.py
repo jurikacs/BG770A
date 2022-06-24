@@ -4,12 +4,13 @@
 '''
 
 import csv
+import pprint
 import pynmea2
 import re
 import serial
 import sys
 import time
-import pprint
+
 
 bRPi = False
 if "win" not in sys.platform: 
@@ -42,7 +43,7 @@ def delay(ms):
 #----------------------------------------
 class BG770A:
 	board = ""			# Shield name
-	IMEI = "not defined"
+	IMEI = "0"
 	ip_address = ""
 	domain_name = ""
 	port_number = ""
@@ -245,6 +246,7 @@ class BG770A:
 
 	# Function for getting signal quality
 	def getSignalQuality(self):
+		self.sendATcmd("AT+QTEMP","OK\r\n", 5)
 		self.sendATcmd("AT+CSQ","OK\r\n", 5)
 		return self.sendATcmd("AT+QCSQ","OK\r\n", 5)
 
@@ -319,10 +321,11 @@ class BG770A:
 	#----------------------------------------------------------------------------------------
 
 	def gnssOn(self):
-		self.sendATcmd("AT+QGPS?")
+		if self.sendATcmd("AT+QGPS?", "+QGPS: 1", 2.):
+			return True
 		self.sendATcmd("AT+QGPS=1")
-		delay(1000)
-		if self.sendATcmd("AT+QGPS?", "+QGPS:1"):
+		delay(2000)
+		if self.sendATcmd("AT+QGPS?", "+QGPS: 1", 2.):
 			return True
 		else:
 			return False
@@ -354,7 +357,9 @@ class BG770A:
 
 	def acquirePositionInfo(self):
 		self.sendATcmd('AT+QGPSLOC?')
-		if(self.response.find('ERROR') != -1):
+		if self.response.find('ERROR') != -1:
+			if self.response.find('505') != -1:
+				self.gnssOn() # try to repair
 			return False
 		start = len('AT+QGPSLOC?\r\r\n+QGPSLOC: ')
 		end = self.response.find('\r', start)

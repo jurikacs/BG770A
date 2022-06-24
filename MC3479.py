@@ -10,28 +10,74 @@ import time
 # Register Adresses
 #----------------------------------------------------------------------------------------
 
-DEV_STATUS_REG =        0x05
-INTR_CTRL_REG =         0x06
-MODE_REG =              0x07
-RATE_REG =              0x08
-MOTION_CTRL_REG =       0x09
-STATUS_REG =            0x13
-INTR_STAT_REG =         0x14
+#DEV_STATUS_REG =        0x05
+#INTR_CTRL_REG =         0x06
+#MODE_REG =              0x07
+#RATE_REG =              0x08
+#MOTION_CTRL_REG =       0x09
+#STATUS_REG =            0x13
+#INTR_STAT_REG =         0x14
 
-RANGE_REG =             0x20
-COMM_CTRL_REG =         0x31
-GPIO_CTRL_REG =         0x33
-TF_THRESH_REG =         0x40
-TF_DEBOUNCE_REG =       0x42
-AM_THRESH_REG =         0x43
-AM_DB_REG =             0x45
-SHK_THRESH_REG =        0x46
-PK_P2P_DUR_THRES_REG =  0x48
-TIMER_CTRL_REG =        0x4A
+#RANGE_REG =             0x20
+#COMM_CTRL_REG =         0x31
+#GPIO_CTRL_REG =         0x33
+#TF_THRESH_REG =         0x40
+#TF_DEBOUNCE_REG =       0x42
+#AM_THRESH_REG =         0x43
+#AM_DB_REG =             0x45
+#SHK_THRESH_REG =        0x46
+#PK_P2P_DUR_THRES_REG =  0x48
+#TIMER_CTRL_REG =        0x4A
 
-XOUT_REG =              0x0D
-YOUT_REG =              0x0F
-ZOUT_REG =              0x11
+#XOUT_REG =              0x0D
+#YOUT_REG =              0x0F
+#ZOUT_REG =              0x11
+
+class MC34X9_REG(Enum):
+    DEV_STAT        = 0x05
+    INTR_CTRL       = 0x06
+    MODE            = 0x07
+    RATE            = 0x08
+    MOTION_CTRL     = 0x09
+    FIFO_STAT       = 0x0A
+    FIFO_RD_P       = 0x0B
+    FIFO_WR_P       = 0x0C
+    XOUT_LSB        = 0x0D
+    XOUT_MSB        = 0x0E
+    YOUT_LSB        = 0x0F
+    YOUT_MSB        = 0x10
+    ZOUT_LSB        = 0x11
+    ZOUT_MSB        = 0x12
+    STATUS          = 0x13
+    INTR_STAT       = 0x14
+    PROD            = 0x18
+    RANGE           = 0x20
+    XOFFL           = 0x21
+    XOFFH           = 0x22
+    YOFFL           = 0x23
+    YOFFH           = 0x24
+    ZOFFL           = 0x25
+    ZOFFH           = 0x26
+    XGAIN           = 0x27
+    YGAIN           = 0x28
+    ZGAIN           = 0x29
+    FIFO_CTRL       = 0x2D
+    FIFO_TH         = 0x2E
+    FIFO_INTR       = 0x2F
+    FIFO_CTRL_SR2   = 0x30
+    COMM_CTRL       = 0x31
+    GPIO_CTRL       = 0x33
+    TF_THRESH_LSB   = 0x40
+    TF_THRESH_MSB   = 0x41
+    TF_DEBOUNCE     = 0x42
+    AM_THRESH_LSB   = 0x43
+    AM_THRESH_MSB   = 0x44
+    AM_DB           = 0x45
+    SHK_THRESH_LSB  = 0x46
+    SHK_THRESH_MSB  = 0x47
+    SHK_DUR_LSB     = 0x48
+    SHK_DUR_MSB     = 0x49
+    TIMER_CTRL      = 0x4A
 
 #----------------------------------------------------------------------------------------
 #     defaults
@@ -65,7 +111,7 @@ class MC3419:
     #          10: Reserved
     #          11: Reserved
     def setDeviceMode(self, mode):
-        self.writeRegister(MODE_REG, mode)
+        self.writeRegister(MC34X9_REG.MODE, mode)
 
     # Set the sample rate.
     # This is only valid for SPI speeds < 4MHz
@@ -80,7 +126,7 @@ class MC3419:
     #      0x16: 500 Hz
     #      0x17: 1000 Hz
     def setSampleRate(self, sampleRate):
-        self.writeRegister(RATE_REG, sampleRate)
+        self.writeRegister(MC34X9_REG.RATE, sampleRate)
 
     # Set range and scale of accelerometer
     # 
@@ -106,7 +152,7 @@ class MC3419:
     #          111: Reserved
     #    Bit 7:    Reserved
     def  setRange(self, data):
-        self.writeRegister(RANGE_REG, data)
+        self.writeRegister(MC34X9_REG.RANGE, data)
 
     # Set the communication control register.
     # Bits 0-3 and 7 are reserved
@@ -116,7 +162,7 @@ class MC3419:
     #      Bit 5: Enable (1):or disable (0):SPI 3-wire mode. Not supported in this library
     #      Bit 6: Enable (1):or disable (1):clearing of individual interrupt flags. Not supported in this library
     def  setComControl(self, data):
-        self.writeRegister(COMM_CTRL_REG, data)
+        self.writeRegister(MC34X9_REG.COMM_CTRL, data)
 
     # Set GPIO control register
     # Bits 0, 1, 4 and 5 are reserved
@@ -127,7 +173,7 @@ class MC3419:
     #      Bit 6: Set polarity of INT2 output. Active low (0):or active high (1)
     #      Bit 7: Select between open dran (0):or push/pull (1):mode of INT2 output
     def  setGPIOControl(self, data):
-        self.writeRegister(GPIO_CTRL_REG, data)
+        self.writeRegister(MC34X9_REG.GPIO_CTRL, data)
 
     # Set motion control register. Enables flags and interrupts for motion detection features
     # 
@@ -142,14 +188,14 @@ class MC3419:
     #      bit 7: Set (1):or clear (0):motion block reset
     def  setMotionControl(self, data):
         self._motionCtrlReg = data
-        self.writeRegister(MOTION_CTRL_REG, data)
+        self.writeRegister(MC34X9_REG.MOTION_CTRL, data)
 
      # Reset the motion block.
      # Sets and then clears bit 7 of the motion control register
     def  resetMotionControl(self):
         self.setDeviceMode(MODE_STANDBY)
-        self.writeRegister(MOTION_CTRL_REG, self._motionCtrlReg | 1<<7)
-        self.writeRegister(MOTION_CTRL_REG, self._motionCtrlReg)
+        self.writeRegister(MC34X9_REG.MOTION_CTRL, self._motionCtrlReg | 1<<7)
+        self.writeRegister(MC34X9_REG.MOTION_CTRL, self._motionCtrlReg)
         self.setDeviceMode(MODE_WAKE)
 
     # Get motion status data
@@ -165,7 +211,7 @@ class MC3419:
     #      bit 6: Reserved
     #      bit 7: New data flag
     def getStatus(self):
-        return self.readRegister(STATUS_REG)
+        return self.readRegister(MC34X9_REG.STATUS)
 
     # Configure what interrupts to enable
     # Motion detection must be enabled using setMotionControl()
@@ -180,7 +226,7 @@ class MC3419:
     #      bit 6: Auto clear
     #      bit 7: Acquisition interrupt
     def  setInterrupt(self, data):
-        self.writeRegister(INTR_CTRL_REG, data)
+        self.writeRegister(MC34X9_REG.INTR_CTRL, data)
 
     # Get the interrupt status. 
     # For interrupts to trigger, motion detection must be enabled using setMotionControl():and interrupts must be enabled using setInterrupt().
@@ -195,26 +241,26 @@ class MC3419:
     #      bit 6: Auto clear
     #      bit 7: Acquisition interrupt
     def getInterruptStatus(self):
-        return self.readRegister(INTR_STAT_REG)
+        return self.readRegister(MC34X9_REG.INTR_STAT)
 
     # Clears all interrupts in the interrupt status register
     def  clearInterrupts(self):
-        self.writeRegister(INTR_STAT_REG, 0)
+        self.writeRegister(MC34X9_REG.INTR_STAT, 0)
 
     # Gets the acceleration in x-direction
     # @returns acceleration: acceleration in x direction
     def getX(self):
-        return self.readRegister(XOUT_REG, 2)
+        return self.readRegister(MC34X9_REG.XOUT_LSB, 2)
 
     # Gets the acceleration in y-direction
     # @returns acceleration: acceleration in y direction
     def getY(self):
-        return self.readRegister(YOUT_REG, 2)
+        return self.readRegister(MC34X9_REG.YOUT_LSB, 2)
 
     # Gets the acceleration in x-direction
     # @returns acceleration: acceleration in x direction
     def getZ(self):
-        return self.readRegister(ZOUT_REG, 2)
+        return self.readRegister(MC34X9_REG.ZOUT_LSB, 2)
 
     # Sets the threshold value for the tilt/flip/tilt-35 functionality.
     # Tilt and/or flip must be enabled in the motion control register using setMotionControl().
@@ -225,30 +271,33 @@ class MC3419:
     # 
     #  threshold:  Threshold value
     def  setTiltThreshold(self, threshold):
-        self.writeRegister(TF_THRESH_REG, threshold, 2)
+        self.writeRegister(MC34X9_REG.TF_THRESH_LSB, threshold, 2)
 
     # Sets the tilt/flip debounce duration.
     # Each consecutive time a tilt/flip condition is detected, a counter is incremented. If this counter exceeds the duration value, the tilt/flip interrupt is set.
     # 
     #  duration: Duration
     def  setTiltDebounce(self, duration):
-        self.writeRegister(TF_DEBOUNCE_REG, duration)
+        self.writeRegister(MC34X9_REG.TF_DEBOUNCE, duration)
 
+    def runScenario(self, list_scen):
+        for setting in  list_scen:
+            self.writeRegister(setting[0], setting[1])
 
     # Writes data to one or more registers
     #  address:     register address to write to
     #  data:        data to write
     #  bytesToSend: number of bytes to send (1 or 2)
-    def  writeRegister(self, address,  data, bytesToSend = 1):
+    def  writeRegister(self, address, data, bytesToSend = 1):
         if bytesToSend == 1:
-            self.i2cBus.write_byte_data(self._i2cAddr, address, data)
-            print("write byte \t" + hex(data) + " \tto register " + str(address))
+            self.i2cBus.write_byte_data(self._i2cAddr, address.value, data)
+            print("write byte \t" + hex(data) + " \tto register " + address.name)
         elif bytesToSend == 2:
-            self.i2cBus.write_word_data(self._i2cAddr, address, data)
-            print("write word \t" + hex(data) + " \tto register " + str(address))
+            self.i2cBus.write_word_data(self._i2cAddr, address.value, data)
+            print("write word \t" + hex(data) + " \tto register " + address.name)
         else:
             print("TODO: implement multibyte write")
-            print("write " + str(bytesToSend) + " bytes \tto register "+ str(address))
+            print("write " + str(bytesToSend) + " bytes \tto register "+ address.name)
 
     # Read data from one or more registers
     #  address:         register address to read from
@@ -257,9 +306,9 @@ class MC3419:
     def readRegister(self, address, bytesToRead = 1):
         data = -1
         if bytesToRead == 1:
-           data = self.i2cBus.read_byte_data(self._i2cAddr, address)
+           data = self.i2cBus.read_byte_data(self._i2cAddr, address.value)
         elif bytesToRead == 2:
-            data = self.i2cBus.read_word_data(self._i2cAddr, address)
+            data = self.i2cBus.read_word_data(self._i2cAddr, address.value)
         else:
             print("TODO: implement multibyte read")
         #print("read " + str(bytesToRead) + " bytes from registers "+ str(address))
@@ -277,18 +326,18 @@ if __name__=='__main__':
     TILT_ANGLE = 10
     TILT_THRESHOLD = 15*TILT_ANGLE
 
-    accel.setDeviceMode(MODE_STANDBY);      #Put accelerometer in standby mode
-    accel.setGPIOControl(0b00001100);       #Set GPIO control. Set bit 2 to 1 for INT active high, set bit 3 to 1 for INT push-pull
-    accel.setSampleRate(SAMPLE_RATE);       #Set the sample rate
-    accel.setInterrupt(0b00000001);         #Set the interrupt enable register, bit 0 enables tilt, bit 1 enables flip, bit 3 enables shake. Set bit 6 to 1 for autoclear
-    accel.setTiltThreshold(TILT_THRESHOLD); #Set tilt threshold
-    accel.setTiltDebounce(TILT_DEBOUNCE);   #Set tilt debounce
+    accel.setDeviceMode(MODE_STANDBY)      #Put accelerometer in standby mode
+    accel.setGPIOControl(0b00001100)       #Set GPIO control. Set bit 2 to 1 for INT active high, set bit 3 to 1 for INT push-pull
+    accel.setSampleRate(SAMPLE_RATE)       #Set the sample rate
+    accel.setInterrupt(0b00000001)         #Set the interrupt enable register, bit 0 enables tilt, bit 1 enables flip, bit 3 enables shake. Set bit 6 to 1 for autoclear
+    accel.setTiltThreshold(TILT_THRESHOLD) #Set tilt threshold
+    accel.setTiltDebounce(TILT_DEBOUNCE)   #Set tilt debounce
 
-    accel.setMotionControl(0b00000001);     #Enable motion control features. Bit 0 enables tilt/flip, bit 2 enables anymotion (req for shake), bit 3 enables shake, bit 5 inverts z-axis
-    accel.setRange(0b00000000);             #Set accelerometer range
-    accel.clearInterrupts();                #Clear the interrupt register
-    accel.resetMotionControl();             #Reset the motion control
-    accel.setDeviceMode(MODE_WAKE);         #Wake up accelerometer
+    accel.setMotionControl(0b00000001)     #Enable motion control features. Bit 0 enables tilt/flip, bit 2 enables anymotion (req for shake), bit 3 enables shake, bit 5 inverts z-axis
+    accel.setRange(0b00000000)             #Set accelerometer range
+    accel.clearInterrupts()                #Clear the interrupt register
+    accel.resetMotionControl()             #Reset the motion control
+    accel.setDeviceMode(MODE_WAKE)         #Wake up accelerometer
 
     print("\nstatus:    " + hex (accel.getStatus()))
     print("interrupt: " + hex (accel.getInterruptStatus()))
@@ -319,3 +368,35 @@ if __name__=='__main__':
         _shakeDuration = data
         self.setShakePeakToPeakDuration(self._shakePeakToPeakDuration)
 '''
+
+#https://www.eevblog.com/forum/beginners/mc3479-accelerometer-troubles/
+
+scen_tilt = [
+    [MC34X9_REG.GPIO_CTRL,      0x88],   # INTN2 = push-pull & active-low. INTN1 = push-pull & active-low.
+    [MC34X9_REG.RATE,           0x13],   # set internal data rate (IDR) to 100Hz
+    [MC34X9_REG.RANGE,          0x20],   # 8g range (4096 steps), no low pass filter
+    [MC34X9_REG.FIFO_CTRL,      0x08],   # FIFO disabled, all interrupts combined onto INTN1
+    [MC34X9_REG.COMM_CTRL,      0x00],   # don't swap INTN1 and INTN2, 4-wire SPI mode, clear all interrupts together
+    [MC34X9_REG.MOTION_CTRL,    0x41],   # enable TILT/FLIP feature, use real-time raw data
+    [MC34X9_REG.TF_THRESH_LSB,  0x20],   # set TILT threshold LSB (lower number = device must be flatter to get interrupts)
+    [MC34X9_REG.TF_THRESH_MSB,  0x00],   # set TILT threshold MSB
+    [MC34X9_REG.TF_DEBOUNCE,    0x04],   # set TILT debounce time
+    [MC34X9_REG.INTR_CTRL,      0x01],   # only enable TILT interrupts, don't auto-clear interrupts
+    [MC34X9_REG.MODE,           0x01]    # enter WAKE state and disable I2C WDT
+    ]
+
+
+scen_shake = [
+    [MC34X9_REG.GPIO_CTRL,      0x88],   # INTN2 = push-pull & active-low. INTN1 = push-pull & active-low.
+    [MC34X9_REG.RATE,           0x13],   # set internal data rate (IDR) to 100Hz
+    [MC34X9_REG.RANGE,          0x20],   # 8g range (4096 steps), no low pass filter
+    [MC34X9_REG.FIFO_CTRL,      0x08],   # FIFO disabled, all interrupts combined onto INTN1
+    [MC34X9_REG.COMM_CTRL,      0x00],   # don't swap INTN1 and INTN2, 4-wire SPI mode, clear all interrupts together
+    [MC34X9_REG.MOTION_CTRL,    0x4C],   # enable ANYM and SHAKE features, use real-time raw data
+    [MC34X9_REG.SHK_THRESH_LSB, 0x00],   # set SHAKE threshold LSB
+    [MC34X9_REG.SHK_THRESH_MSB, 0x10],   # set SHAKE threshold MSB
+    [MC34X9_REG.SHK_DUR_LSB,    0x80],   # set SHAKE duration LSB
+    [MC34X9_REG.SHK_DUR_MSB,    0x30],   # set SHAKE duration MSB and count threshold
+    [MC34X9_REG.INTR_CTRL,      0x08],   # only enable SHAKE interrupts, don't auto-clear interrupts
+    [MC34X9_REG.MODE,           0x01],   # enter WAKE state and disable I2C WDT
+]

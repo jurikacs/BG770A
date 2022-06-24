@@ -2,6 +2,7 @@
 	Finamon BG770A Library 
 	Library for Finamon GNSS/Modem BG770A Shield.
 '''
+from enum import Enum
 
 import smbus
 import time
@@ -280,9 +281,6 @@ class MC3419:
     def  setTiltDebounce(self, duration):
         self.writeRegister(MC34X9_REG.TF_DEBOUNCE, duration)
 
-    def runScenario(self, list_scen):
-        for setting in  list_scen:
-            self.writeRegister(setting[0], setting[1])
 
     # Writes data to one or more registers
     #  address:     register address to write to
@@ -299,6 +297,11 @@ class MC3419:
             print("TODO: implement multibyte write")
             print("write " + str(bytesToSend) + " bytes \tto register "+ address.name)
 
+    # Writes data to set of registers
+    def runScenario(self, list_scen):
+        for setting in  list_scen:
+            self.writeRegister(setting[0], setting[1])
+
     # Read data from one or more registers
     #  address:         register address to read from
     #  bytesToRead:     number of bytes to read (1 or 2)
@@ -313,63 +316,6 @@ class MC3419:
             print("TODO: implement multibyte read")
         #print("read " + str(bytesToRead) + " bytes from registers "+ str(address))
         return data
-
-
-
-if __name__=='__main__':
-
-    accel = MC3419()
-    #print("who am I: " + hex(accel.i2cBus.read_byte_data(accel._i2cAddr, 0x0D)))
-    
-    SAMPLE_RATE = 0x10
-    TILT_DEBOUNCE = 5
-    TILT_ANGLE = 10
-    TILT_THRESHOLD = 15*TILT_ANGLE
-
-    accel.setDeviceMode(MODE_STANDBY)      #Put accelerometer in standby mode
-    accel.setGPIOControl(0b00001100)       #Set GPIO control. Set bit 2 to 1 for INT active high, set bit 3 to 1 for INT push-pull
-    accel.setSampleRate(SAMPLE_RATE)       #Set the sample rate
-    accel.setInterrupt(0b00000001)         #Set the interrupt enable register, bit 0 enables tilt, bit 1 enables flip, bit 3 enables shake. Set bit 6 to 1 for autoclear
-    accel.setTiltThreshold(TILT_THRESHOLD) #Set tilt threshold
-    accel.setTiltDebounce(TILT_DEBOUNCE)   #Set tilt debounce
-
-    accel.setMotionControl(0b00000001)     #Enable motion control features. Bit 0 enables tilt/flip, bit 2 enables anymotion (req for shake), bit 3 enables shake, bit 5 inverts z-axis
-    accel.setRange(0b00000000)             #Set accelerometer range
-    accel.clearInterrupts()                #Clear the interrupt register
-    accel.resetMotionControl()             #Reset the motion control
-    accel.setDeviceMode(MODE_WAKE)         #Wake up accelerometer
-
-    print("\nstatus:    " + hex (accel.getStatus()))
-    print("interrupt: " + hex (accel.getInterruptStatus()))
-    print("X: " + hex(accel.getX()))
-    print("Y: " + hex(accel.getY()))
-    print("Z: " + hex(accel.getZ()))
- 
-'''
-    def  setAnymotionThreshold(self, data):
-        self.writeRegister(AM_THRESH_REG, data, 2)
-
-    def  setAnymotionDebounce(self, data):
-        self.writeRegister(AM_DB_REG, data)
-
-    def  setShakeThreshold(self, data):
-        self.writeRegister(SHK_THRESH_REG, data, 2)
-
-    def  setShakePeakToPeakDuration(self, data):
-        if (data > 4095):
-            return
-        _shakePeakToPeakDuration = data
-        d = _shakePeakToPeakDuration | self._shakeDuration<<12
-        self.writeRegister(PK_P2P_DUR_THRES_REG, d, 2)
-
-    def  setShakeDuration(self, data):
-        if (data > 7):
-            return
-        _shakeDuration = data
-        self.setShakePeakToPeakDuration(self._shakePeakToPeakDuration)
-'''
-
-#https://www.eevblog.com/forum/beginners/mc3479-accelerometer-troubles/
 
 scen_tilt = [
     [MC34X9_REG.GPIO_CTRL,      0x88],   # INTN2 = push-pull & active-low. INTN1 = push-pull & active-low.
@@ -400,3 +346,62 @@ scen_shake = [
     [MC34X9_REG.INTR_CTRL,      0x08],   # only enable SHAKE interrupts, don't auto-clear interrupts
     [MC34X9_REG.MODE,           0x01],   # enter WAKE state and disable I2C WDT
 ]
+
+
+if __name__=='__main__':
+
+    accel = MC3419()
+    #print("who am I: " + hex(accel.i2cBus.read_byte_data(accel._i2cAddr, 0x0D)))
+    
+    SAMPLE_RATE = 0x10
+    TILT_DEBOUNCE = 5
+    TILT_ANGLE = 10
+    TILT_THRESHOLD = 15*TILT_ANGLE
+
+    accel.setDeviceMode(MODE_STANDBY)      #Put accelerometer in standby mode
+    accel.setGPIOControl(0b00001100)       #Set GPIO control. Set bit 2 to 1 for INT active high, set bit 3 to 1 for INT push-pull
+    accel.setSampleRate(SAMPLE_RATE)       #Set the sample rate
+    accel.setInterrupt(0b00000001)         #Set the interrupt enable register, bit 0 enables tilt, bit 1 enables flip, bit 3 enables shake. Set bit 6 to 1 for autoclear
+    accel.setTiltThreshold(TILT_THRESHOLD) #Set tilt threshold
+    accel.setTiltDebounce(TILT_DEBOUNCE)   #Set tilt debounce
+
+    accel.setMotionControl(0b00000001)     #Enable motion control features. Bit 0 enables tilt/flip, bit 2 enables anymotion (req for shake), bit 3 enables shake, bit 5 inverts z-axis
+    accel.setRange(0b00000000)             #Set accelerometer range
+    accel.clearInterrupts()                #Clear the interrupt register
+    accel.resetMotionControl()             #Reset the motion control
+    accel.setDeviceMode(MODE_WAKE)         #Wake up accelerometer
+
+    print("\nstatus:    " + hex (accel.getStatus()))
+    print("interrupt: " + hex (accel.getInterruptStatus()))
+    print("X: " + hex(accel.getX()))
+    print("Y: " + hex(accel.getY()))
+    print("Z: " + hex(accel.getZ()))
+
+    accel.runScenario(scen_tilt)
+    
+'''
+    def  setAnymotionThreshold(self, data):
+        self.writeRegister(AM_THRESH_REG, data, 2)
+
+    def  setAnymotionDebounce(self, data):
+        self.writeRegister(AM_DB_REG, data)
+
+    def  setShakeThreshold(self, data):
+        self.writeRegister(SHK_THRESH_REG, data, 2)
+
+    def  setShakePeakToPeakDuration(self, data):
+        if (data > 4095):
+            return
+        _shakePeakToPeakDuration = data
+        d = _shakePeakToPeakDuration | self._shakeDuration<<12
+        self.writeRegister(PK_P2P_DUR_THRES_REG, d, 2)
+
+    def  setShakeDuration(self, data):
+        if (data > 7):
+            return
+        _shakeDuration = data
+        self.setShakePeakToPeakDuration(self._shakePeakToPeakDuration)
+'''
+
+#https://www.eevblog.com/forum/beginners/mc3479-accelerometer-troubles/
+

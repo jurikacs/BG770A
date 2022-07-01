@@ -51,7 +51,9 @@ class MC34X9_REG(Enum):
     ZOUT_MSB        = 0x12
     STATUS          = 0x13
     INTR_STAT       = 0x14
+    REG_15          = 0x15
     PROD            = 0x18
+    REG_1C          = 0x1C
     RANGE           = 0x20
     XOFFL           = 0x21
     XOFFH           = 0x22
@@ -62,6 +64,7 @@ class MC34X9_REG(Enum):
     XGAIN           = 0x27
     YGAIN           = 0x28
     ZGAIN           = 0x29
+    REG_2B          = 0x2B
     FIFO_CTRL       = 0x2D
     FIFO_TH         = 0x2E
     FIFO_INTR       = 0x2F
@@ -281,6 +284,42 @@ class MC3419:
     def  setTiltDebounce(self, duration):
         self.writeRegister(MC34X9_REG.TF_DEBOUNCE, duration)
 
+    def  setAnymotionThreshold(self, data):
+        self.writeRegister(AM_THRESH_REG, data, 2)
+
+    def  setAnymotionDebounce(self, data):
+        self.writeRegister(AM_DB_REG, data)
+
+    def  setShakeThreshold(self, data):
+        self.writeRegister(SHK_THRESH_REG, data, 2)
+
+    def  setShakePeakToPeakDuration(self, data):
+        if (data > 4095):
+            return
+        _shakePeakToPeakDuration = data
+        d = _shakePeakToPeakDuration | self._shakeDuration<<12
+        self.writeRegister(PK_P2P_DUR_THRES_REG, d, 2)
+
+    def  setShakeDuration(self, data):
+        if (data > 7):
+            return
+        _shakeDuration = data
+        self.setShakePeakToPeakDuration(self._shakePeakToPeakDuration)
+
+    # Read data from one or more registers
+    #  address:         register address to read from
+    #  bytesToRead:     number of bytes to read (1 or 2)
+    # @returns data:    data that has been read
+    def readRegister(self, address, bytesToRead = 1):
+        data = -1
+        if bytesToRead == 1:
+           data = self.i2cBus.read_byte_data(self._i2cAddr, address.value)
+        elif bytesToRead == 2:
+            data = self.i2cBus.read_word_data(self._i2cAddr, address.value)
+        else:
+            print("TODO: implement multibyte read")
+        #print("read " + str(bytesToRead) + " bytes from registers "+ str(address))
+        return data
 
     # Writes data to one or more registers
     #  address:     register address to write to
@@ -301,51 +340,6 @@ class MC3419:
     def runScenario(self, list_scen):
         for setting in  list_scen:
             self.writeRegister(setting[0], setting[1])
-
-    # Read data from one or more registers
-    #  address:         register address to read from
-    #  bytesToRead:     number of bytes to read (1 or 2)
-    # @returns data:    data that has been read
-    def readRegister(self, address, bytesToRead = 1):
-        data = -1
-        if bytesToRead == 1:
-           data = self.i2cBus.read_byte_data(self._i2cAddr, address.value)
-        elif bytesToRead == 2:
-            data = self.i2cBus.read_word_data(self._i2cAddr, address.value)
-        else:
-            print("TODO: implement multibyte read")
-        #print("read " + str(bytesToRead) + " bytes from registers "+ str(address))
-        return data
-
-scen_tilt = [
-    [MC34X9_REG.GPIO_CTRL,      0x88],   # INTN2 = push-pull & active-low. INTN1 = push-pull & active-low.
-    [MC34X9_REG.RATE,           0x13],   # set internal data rate (IDR) to 100Hz
-    [MC34X9_REG.RANGE,          0x20],   # 8g range (4096 steps), no low pass filter
-    [MC34X9_REG.FIFO_CTRL,      0x08],   # FIFO disabled, all interrupts combined onto INTN1
-    [MC34X9_REG.COMM_CTRL,      0x00],   # don't swap INTN1 and INTN2, 4-wire SPI mode, clear all interrupts together
-    [MC34X9_REG.MOTION_CTRL,    0x41],   # enable TILT/FLIP feature, use real-time raw data
-    [MC34X9_REG.TF_THRESH_LSB,  0x20],   # set TILT threshold LSB (lower number = device must be flatter to get interrupts)
-    [MC34X9_REG.TF_THRESH_MSB,  0x00],   # set TILT threshold MSB
-    [MC34X9_REG.TF_DEBOUNCE,    0x04],   # set TILT debounce time
-    [MC34X9_REG.INTR_CTRL,      0x01],   # only enable TILT interrupts, don't auto-clear interrupts
-    [MC34X9_REG.MODE,           0x01]    # enter WAKE state and disable I2C WDT
-    ]
-
-
-scen_shake = [
-    [MC34X9_REG.GPIO_CTRL,      0x88],   # INTN2 = push-pull & active-low. INTN1 = push-pull & active-low.
-    [MC34X9_REG.RATE,           0x13],   # set internal data rate (IDR) to 100Hz
-    [MC34X9_REG.RANGE,          0x20],   # 8g range (4096 steps), no low pass filter
-    [MC34X9_REG.FIFO_CTRL,      0x08],   # FIFO disabled, all interrupts combined onto INTN1
-    [MC34X9_REG.COMM_CTRL,      0x00],   # don't swap INTN1 and INTN2, 4-wire SPI mode, clear all interrupts together
-    [MC34X9_REG.MOTION_CTRL,    0x4C],   # enable ANYM and SHAKE features, use real-time raw data
-    [MC34X9_REG.SHK_THRESH_LSB, 0x00],   # set SHAKE threshold LSB
-    [MC34X9_REG.SHK_THRESH_MSB, 0x10],   # set SHAKE threshold MSB
-    [MC34X9_REG.SHK_DUR_LSB,    0x80],   # set SHAKE duration LSB
-    [MC34X9_REG.SHK_DUR_MSB,    0x30],   # set SHAKE duration MSB and count threshold
-    [MC34X9_REG.INTR_CTRL,      0x08],   # only enable SHAKE interrupts, don't auto-clear interrupts
-    [MC34X9_REG.MODE,           0x01],   # enter WAKE state and disable I2C WDT
-]
 
 
 if __name__=='__main__':
@@ -377,31 +371,13 @@ if __name__=='__main__':
     print("Y: " + hex(accel.getY()))
     print("Z: " + hex(accel.getZ()))
 
-    accel.runScenario(scen_tilt)
-    
-'''
-    def  setAnymotionThreshold(self, data):
-        self.writeRegister(AM_THRESH_REG, data, 2)
+    #for reg in MC34X9_REG:       
+    #    print("%02X: %02X %s" % (reg.value, accel.readRegister(reg), reg.name))
+        
+    while True:
+        if accel.getStatus() != 0xA0:
+            print('[' + time.strftime("%H:%M:%S") + '] ' + "status: 0x%02X X=0x%04X Y= x%04X Z=0x%04X" % (accel.getStatus(), accel.getX(), accel.getY(), accel.getZ()))
+        time.sleep(.2)
+  
 
-    def  setAnymotionDebounce(self, data):
-        self.writeRegister(AM_DB_REG, data)
-
-    def  setShakeThreshold(self, data):
-        self.writeRegister(SHK_THRESH_REG, data, 2)
-
-    def  setShakePeakToPeakDuration(self, data):
-        if (data > 4095):
-            return
-        _shakePeakToPeakDuration = data
-        d = _shakePeakToPeakDuration | self._shakeDuration<<12
-        self.writeRegister(PK_P2P_DUR_THRES_REG, d, 2)
-
-    def  setShakeDuration(self, data):
-        if (data > 7):
-            return
-        _shakeDuration = data
-        self.setShakePeakToPeakDuration(self._shakePeakToPeakDuration)
-'''
-
-#https://www.eevblog.com/forum/beginners/mc3479-accelerometer-troubles/
 

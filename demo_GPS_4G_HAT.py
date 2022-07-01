@@ -2,7 +2,7 @@
   demo_GPS_4G_HAT.py - This is Finamon GPS-4G-HAT shield funktionality demo
 '''
 
-from asyncio.windows_events import NULL
+#from asyncio.windows_events import NULL
 from BG770A import BG770A
 from datetime import datetime
 import time
@@ -115,7 +115,7 @@ while True:
     module.gnssOn()
 
     start_time = time.time()
-    gpsloc = NULL
+    gpsloc = None
     while(not gpsloc):
         time.sleep(30.)
         module.sendATcmd('AT+QGPSGNMEA="GSV"')

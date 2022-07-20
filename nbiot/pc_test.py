@@ -13,18 +13,21 @@ from enum import Enum
 # https://www.debuggex.com/
 #regex = re.compile(r'.+\s+SEND OK\s+\+QIURC: "recv",\d+,(\d+)\s+(.+)')
 #regex = re.compile(r'.+\s+\+QGPSLOC: \d+\.\d+,(\d+\.\d+)\w,(\d+\.\d+)\w.+')
-regex = re.compile(r'AT\+GSN\s+(\d+)')
+#regex = re.compile(r'AT\+GSN\s+(\d+)')
+regex = re.compile(r'.+\s+\+QCSQ: .+,-\d+,(-\d+),-\d+,(-\d+)')
 
 #test = "+QIURC: \"recv\",0,13\r\nHello Finamon"
 #test = 'Hello Finamon\r\nSEND OK\r\n\r\n+QIURC: "recv",0,13\r\nHello Finamon'
 #test = "AT+QGPSLOC\r\n\r\n+QGPSLOC: 131604.000,5113.7451N,642.8864E,2.6,0.0,3,69.00,0.0,0.0,170622,4\r\n\r\nOK\r\n"
 #test = "AT+GSN\r\n\r\n866349041749536\r\n\r\nOK\r\n"
+test = 'AT+QCSQ\r\r\n+QCSQ: "eMTC",-57,-77,225,-7\r\n\r\nOK\r\n'
 
-#res = regex.match(test)
-#if res:
-#    print(res.group(1))  #, res.group(2))
-#else:
-#    print("no match")
+
+res = regex.match(test)
+if res:
+    print(res.group(1))  #, res.group(2))
+else:
+    print("no match")
 
 
 shield_json_string = """

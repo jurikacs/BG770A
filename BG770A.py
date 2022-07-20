@@ -245,6 +245,14 @@ class BG770A:
 		self.sendATcmd("AT+CEREG?", "+CEREG: 0,5", 120)
 
 	# Function for getting signal quality
+
+	# Quectel defines the following quality metric for the quality of the connection:
+	#	RF Quality		RSRP (dbm)		RSRQ (dB)
+	#	Excellent		>= -80			>= -10
+	#	Good			-80 to -90		-10 to -15
+	#	Mid Cell		-90 to -100		-15 to -20
+	#	Cell Edge		< -100			< -20
+
 	def getSignalQuality(self):
 		self.sendATcmd("AT+QTEMP","OK\r\n", 5)
 		self.sendATcmd("AT+CSQ","OK\r\n", 5)
@@ -532,11 +540,12 @@ if __name__=='__main__':
 	module.sendATcmd("AT+CMEE=2")
 	module.sendATcmd("AT+CPIN?", "OK\r\n", 5)
 	#module.sendATcmd("AT+CPIN=\"1234\"", "OK\r\n", 5)
-	module.sendATcmd("AT+CFUN?")
-	module.sendATcmd("AT+CREG=0", "OK\r\n", 10)
+	module.sendATcmd("AT+CFUN=1")
+	#module.sendATcmd("AT+CREG=0", "OK\r\n", 10)
 	#module.sendATcmd("AT+COPS=?", "OK\r\n", 600)
 	while not module.sendATcmd("AT+CREG?", "+CREG: 0,5", 10):
 		delay(10*1000)
+		module.sendATcmd("AT+COPS?")
 
 	module.getSignalQuality()
 	module.checkRegistration()

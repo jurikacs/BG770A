@@ -45,6 +45,14 @@ mqtt_json_string = """
 }
 """
 
+gps_json_string = """{
+    "imei": 0,
+    "latitude": 0,
+    "longitude": 0,
+    "altitude": 0,
+    "utc": 0
+}"""
+
 def nmea2json (gpsloc):
 
     mqtt_json = json.loads(mqtt_json_string)
@@ -80,18 +88,59 @@ def nmea2json (gpsloc):
     return mqtt_json
 
 
+def nmea2gps_json (gpsloc):
+
+    mqtt_json = json.loads(gps_json_string)
+
+    mqtt_json['imei'] = int(module.IMEI)
+
+    point = gpsloc['latitude'].find('.')
+    gradus = float(gpsloc['latitude'][0:point-2])
+    minute = float(gpsloc['latitude'][point-2:-1])/60
+    mqtt_json['latitude'] = round(gradus + minute, 6)
+    if gpsloc['latitude'][-1] == 'S':
+        mqtt_json['latitude'] = - mqtt_json['latitude']
+
+    point = gpsloc['longitude'].find('.')
+    gradus = float(gpsloc['longitude'][0:point-2])
+    minute = float(gpsloc['longitude'][point-2:-1])/60
+    mqtt_json['longitude'] = round(gradus + minute, 6)
+    if gpsloc['longitude'][-1] == 'W':
+        mqtt_json['longitude'] = - mqtt_json['longitude']
+
+    mqtt_json['altitude'] = gpsloc['altitude']
+
+    dt = datetime(
+        2000 + 
+        int(gpsloc['date'][4:]),    # year
+        int(gpsloc['date'][2:4]),
+        int(gpsloc['date'][0:2]),
+        int(gpsloc['utc'][0:2]),    # hour
+        int(gpsloc['utc'][2:4]),
+        int(gpsloc['utc'][4:6]),
+        )
+    mqtt_json['utc'] = dt.timestamp()
+    return mqtt_json
+
 #----------------------------------------------------------------------------------------
 #	MQTT service data
 #----------------------------------------------------------------------------------------
 
-mqtt_broker = 'broker.emqx.io'
+#mqtt_broker = 'broker.emqx.io'
+#mqtt_port = 1883
+#mqtt_topic = "qf4dcfae.eu-central-1.emqx.cloud"
+## generate client ID with pub prefix randomly
+#mqtt_client_id_string = ""
+#mqtt_username = 'finamon'
+#mqtt_password = 'Finamon_2022'
+#mqtt_msg = ''
+
+mqtt_broker = '23.88.108.59'
 mqtt_port = 1883
-mqtt_topic = "qf4dcfae.eu-central-1.emqx.cloud"
-# generate client ID with pub prefix randomly
-mqtt_client_id_string = ""
-mqtt_username = 'finamon'
-mqtt_password = 'Finamon_2022'
-mqtt_msg = ''
+mqtt_client_id = 'TBD'
+mqtt_username = 'api'
+mqtt_password = 'flake-iraq-contra'
+mqtt_topic = "gps/coordinates"
 
 #----------------------------------------------------------------------------------------
 #	init GPS/communication module BG77x and data structures
@@ -105,6 +154,8 @@ module.getFirmwareInfo()
 module.getIMEI()
 
 #module.acquireGnssSettings()
+file = open("gnss_log_600sec_AA.csv", "a")
+file.write("Time,lattitude,longitude\n")
 
 #----------------------------------------------------------------------------------------
 #	get current geoposition
@@ -122,6 +173,16 @@ while True:
         gpsloc = module.acquirePositionInfo()
 
     print ("position search time %s seconds" % int(time.time() - start_time))
+    
+    for sec in range (600):
+        if gpsloc:
+            mqtt_json = nmea2gps_json(gpsloc)
+            csv_string = str(sec) + ";" + str(mqtt_json['latitude']) + ";" + str(mqtt_json['longitude'])
+            file.write(csv_string.replace('.',',')+"\n")
+            file.flush()
+        time.sleep(.99)
+        gpsloc = module.acquirePositionInfo()
+        
     module.gnssOff()
     time.sleep(2.)
 
@@ -129,8 +190,8 @@ while True:
     #	send current geoposition to MQTT server
     #----------------------------------------------------------------------------------------
 
-    mqtt_json = nmea2json(gpsloc)
-    print("https://maps.google.com/?q=%s,%s" % (mqtt_json["pos"][0]['lat'], mqtt_json["pos"][0]['lon']))
+    mqtt_json = nmea2gps_json(gpsloc)
+    print("https://maps.google.com/?q=%s,%s" % (mqtt_json['latitude'], mqtt_json['longitude']))
     mqtt_msg = json.dumps(mqtt_json)
 
     module.sendATcmd("AT+CMEE=2")
@@ -160,3 +221,5 @@ while True:
     time.sleep(2.)
 
 module.close()
+
+#51.229047, 6.714671 work

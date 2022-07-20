@@ -5,15 +5,61 @@ from BG770A import BG770A
 import time
 import random
 
+mqtt_json_string = """
+{
+"shield":
+    {
+        "imei": 0,
+        "ip":   "127.0.0.1",
+        "inp":  0,
+        "out":  0,
+        "led":  1,
+        "but":  0
+    }
+,
+"pos": [
+    {
+        "lat": 0,
+        "lon": 0,
+        "utc": 0
+    }
+],
+"acc": [
+    {
+        "x":    0,
+        "y":    0,
+        "z":    0,
+        "stat": 0,
+        "utc":  0
+    }
+]
+}
+"""
 
-mqtt_broker = 'broker.emqx.io'
+mqtt_msg  = '''{
+"imei": 866349041737515,
+"latitude": 51.228997,
+"longitude": 6.714182,
+"utc":  1656934485
+}'''
+
+#mqtt_broker = 'broker.emqx.io'
+#mqtt_port = 1883
+#mqtt_topic = "qf4dcfae.eu-central-1.emqx.cloud"
+## generate client ID with pub prefix randomly
+#mqtt_client_id_string = f'python-mqtt-{random.randint(0, 1000)}'
+#mqtt_username = 'finamon'
+#mqtt_password = 'Finamon_2022'
+#mqtt_msg = 'Hello MQTT from GPS-4G-HAT shield'
+
+
+mqtt_broker = '23.88.108.59'
 mqtt_port = 1883
-mqtt_topic = "qf4dcfae.eu-central-1.emqx.cloud"
-# generate client ID with pub prefix randomly
-mqtt_client_id_string = f'python-mqtt-{random.randint(0, 1000)}'
-mqtt_username = 'finamon'
-mqtt_password = 'Finamon_2022'
-mqtt_msg = 'Hello MQTT from GPS-4G-HAT shield'
+mqtt_client_id_string = 'TBD'
+mqtt_username = 'api'
+mqtt_password = 'flake-iraq-contra'
+mqtt_topic = "gps/coordinates"
+
 
 module = BG770A()
 module.debug_print("MQTT client demo")
@@ -42,10 +88,11 @@ mgtt_client_idx = "0"
 module.openMqttConnection(mgtt_client_idx, mqtt_broker, mqtt_port)
 module.connectMqttClient(mqtt_client_id_string, mqtt_username, mqtt_password)
 module.publishMqttMessage(mqtt_topic, mqtt_msg)
-module.subscribeToMqttTopic(mqtt_topic)
-print("wait message from topic: " + mqtt_topic)
-module.waitUnsolicited("+QMTRECV:", 60)
-module.unsubscribeFromMqttTopic(mqtt_topic)
+
+#module.subscribeToMqttTopic(mqtt_topic)
+#print("wait message from topic: " + mqtt_topic)
+#module.waitUnsolicited("+QMTRECV:", 60)
+#module.unsubscribeFromMqttTopic(mqtt_topic)
 
 module.sendATcmd("AT+QMTDISC=0", "+QMTDISC:", 10)
 module.closeConnection()
